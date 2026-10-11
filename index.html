@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.4</title>
+<title>판매가 검색기 v1.0.5</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -252,7 +252,7 @@ main{padding:10px 14px 30px}
       <button class="b3d" id="btnImgGet">이미지 받기</button>
       <button class="b3d" id="btnImgDel">이미지 삭제</button>
     </div>
-    <div class="hint">수동: 받기 버튼을 눌렀을 때만 받습니다<br>자동: 드라이브 이미지가 바뀌면 알아서 받습니다 (약 30MB, 와이파이 권장)</div>
+    <div class="hint">수동: 받기 버튼을 눌렀을 때만 받습니다<br>자동: 드라이브 이미지가 바뀌면 와이파이에서 알아서 받습니다 (약 30MB)</div>
   </div>
 
   <div class="sec">
@@ -299,7 +299,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.4";
+const VERSION = "1.0.5";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
@@ -422,7 +422,9 @@ function customUrl(v){
   let s = text(v);
   if (!s || s.toLowerCase() === "none") return "";
   if (!isSafeUrl(s)) s = "http://" + s;
-  return isSafeUrl(s) && !/\s/.test(s) ? s : "";
+  if (!isSafeUrl(s) || /\s/.test(s)) return "";
+  try{ if (!new URL(s).hostname.includes(".")) return ""; }catch(e){ return ""; }   // "단종" 같은 한 단어는 링크가 아니라 메모
+  return s;
 }
 function parseWorkbook(buf){
   const wb = XLSX.read(buf, {type:"array", cellDates:true});
@@ -466,6 +468,10 @@ let imgBusy = false;
 let imgPending = null;                          // 드라이브에 새 이미지가 있을 때 {modifiedTime, size}
 let imgProgress = "";
 
+// 모바일 데이터(또는 데이터 절약 모드)인지 확인 — 안드로이드 크롬에서만 알 수 있음, 모르면 false
+function onCellular(){
+  try{ const c = navigator.connection; return !!c && (c.type === "cellular" || !!c.saveData); }catch(e){ return false; }
+}
 function imageKey(name){ return String(name).replace(/ /g, "").toLowerCase(); }   // PC: 공백 제거 + 소문자
 
 // IndexedDB 도우미
@@ -608,7 +614,7 @@ async function checkImages(){
     const info = await getImageZipInfo();
     const changed = !imgMeta || !imgMeta.count || imgMeta.modifiedTime !== info.modifiedTime;
     if (!changed){ imgPending = null; updateImgInfo(); return; }
-    if (imgMode === "auto") await downloadImages(info);
+    if (imgMode === "auto" && !onCellular()) await downloadImages(info);
     else {
       const first = !imgPending;
       imgPending = info; updateImgInfo();
@@ -629,6 +635,7 @@ function updateImgInfo(){
   if (imgMode === "off") s += " · 표시 안 함";
   if (imgPending && imgMode !== "off"){
     s += ` · 새 이미지 있음${imgPending.size ? " (" + mb(Number(imgPending.size)) + ")" : ""}`;
+    if (imgMode === "auto" && onCellular()) s += " · 와이파이 연결 시 자동으로 받음";
     info.classList.add("new");
   }
   info.textContent = s;
@@ -722,8 +729,9 @@ $("out").addEventListener("click", e => {
   if (a){ addToCart(a.dataset.add); return; }
   const t = e.target.closest(".thumb"); if (!t) return;
   $("viewImg").src = t.src; $("viewName").textContent = t.dataset.model; $("viewer").hidden = false;
+  pushLayer("viewer");
 });
-$("viewer").onclick = () => { $("viewer").hidden = true; };
+$("viewer").onclick = () => { if (layers[layers.length - 1] === "viewer") closeLayers(1); else $("viewer").hidden = true; };
 
 /* =========================================================
    데이터 동기화
@@ -791,14 +799,49 @@ async function sync(force){
 }
 
 /* =========================================================
+   뒤로가기 처리: 열린 창을 기록해 두고 뒤로가기 시 위에서부터 닫음
+   ========================================================= */
+const layers = [];   // 열린 순서: "sheet" | "cart" | "viewer"
+function hideLayer(name){
+  if (name === "viewer") $("viewer").hidden = true;
+  else $(name === "cart" ? "cartSheet" : "sheet").classList.remove("show");
+  if (!$("sheet").classList.contains("show") && !$("cartSheet").classList.contains("show")) $("mask").classList.remove("show");
+}
+function pushLayer(name){
+  layers.push(name);
+  try{ history.pushState({ rpsDepth: layers.length }, ""); }catch(e){}
+}
+function closeLayers(n){   // 위에서부터 n개 닫기 (뒤로가기와 같은 방식)
+  n = Math.min(n, layers.length);
+  if (n <= 0) return;
+  try{ history.go(-n); }
+  catch(e){ for (let i = 0; i < n; i++) hideLayer(layers.pop()); }
+}
+window.addEventListener("popstate", ev => {
+  const depth = (ev.state && ev.state.rpsDepth) || 0;
+  if (dlgCancel && depth < layers.length){   // 대화상자가 떠 있으면 그것만 닫고 아래 창은 유지
+    dlgCancel();
+    try{ history.pushState({ rpsDepth: layers.length }, ""); }catch(e){}
+    return;
+  }
+  while (layers.length > depth) hideLayer(layers.pop());
+});
+
+/* =========================================================
    설정 시트
    ========================================================= */
 function openSheet(){
   updateImgInfo();
   $("setInfo").textContent = `v${VERSION}` + (items.length ? ` · 상품 ${comma(items.length)}개` : "");
+  if ($("sheet").classList.contains("show")) return;
   $("mask").classList.add("show"); $("sheet").classList.add("show");
+  pushLayer("sheet");
 }
-function closeSheet(){ $("mask").classList.remove("show"); $("sheet").classList.remove("show"); $("cartSheet").classList.remove("show"); }
+function closeSheet(){   // 설정/견적함 모두 닫기
+  const n = layers.filter(x => x === "sheet" || x === "cart").length ? layers.length : 0;
+  if (n) closeLayers(n);
+  else { $("sheet").classList.remove("show"); $("cartSheet").classList.remove("show"); $("mask").classList.remove("show"); }
+}
 $("btnSet").onclick = openSheet;
 $("btnClose").onclick = closeSheet;
 $("mask").onclick = closeSheet;
@@ -915,7 +958,12 @@ $("cartList").addEventListener("click", async ev => {
   }
 });
 $("chkShip").onchange = () => { cart.ship = $("chkShip").checked; saveCart(); renderCart(); };
-function openCart(){ renderCart(); $("mask").classList.add("show"); $("cartSheet").classList.add("show"); }
+function openCart(){
+  renderCart();
+  if ($("cartSheet").classList.contains("show")) return;
+  $("mask").classList.add("show"); $("cartSheet").classList.add("show");
+  pushLayer("cart");
+}
 $("btnCart").onclick = openCart;
 $("btnCartClose").onclick = closeSheet;
 $("btnClear").onclick = async () => {
@@ -934,14 +982,19 @@ async function copyText(t){
     catch(e2){ return false; }
   }
 }
+function quoteOrToast(){
+  if (!cart.entries.length){ toast("견적함이 비어 있습니다"); return null; }
+  if (!items.length){ toast("가격표가 없어 견적을 만들 수 없습니다 (⟳ 새로고침)"); return null; }
+  return buildQuoteText();
+}
 $("btnCopy").onclick = async () => {
-  const t = buildQuoteText();
-  if (!t){ toast("견적함이 비어 있습니다"); return; }
+  const t = quoteOrToast();
+  if (!t) return;
   toast(await copyText(t) ? "견적을 복사했습니다" : "복사 실패");
 };
 $("btnShare").onclick = async () => {
-  const t = buildQuoteText();
-  if (!t){ toast("견적함이 비어 있습니다"); return; }
+  const t = quoteOrToast();
+  if (!t) return;
   if (navigator.share){
     try{ await navigator.share({ text: t }); }
     catch(e){ if (e && e.name !== "AbortError"){ if (await copyText(t)) toast("공유가 안 되어 복사했습니다"); } }
@@ -1025,14 +1078,22 @@ function refreshCartPrices(){
 
 /* ---------- 공용 대화상자 ---------- */
 // buttons: [[글자, 값, "pri"?], ...]  /  input: {value, numeric}  /  list: [{name, sub}]
+let dlgQueue = Promise.resolve();
+let dlgCancel = null;          // 열려 있는 대화상자를 '취소'로 닫는 함수 (뒤로가기용)
 function dialog(o){
+  const p = dlgQueue.then(() => showDialog(o));   // 앞의 창이 닫힌 뒤에 다음 창 표시
+  dlgQueue = p.catch(() => {});
+  return p;
+}
+function showDialog(o){
   return new Promise(resolve => {
     const d = $("dlg"), inp = $("dlgInput"), lst = $("dlgList"), acts = $("dlgActs");
     $("dlgTitle").textContent = o.title || "";
     $("dlgMsg").textContent = o.msg || ""; $("dlgMsg").hidden = !o.msg;
     inp.hidden = !o.input; lst.hidden = !o.list;
     if (o.input){ inp.value = o.input.value || ""; inp.inputMode = o.input.numeric ? "numeric" : "text"; inp.type = "text"; }
-    const done = v => { d.hidden = true; d.onclick = null; inp.onkeydown = null; resolve(v); };
+    const done = v => { d.hidden = true; d.onclick = null; inp.onkeydown = null; dlgCancel = null; resolve(v); };
+    dlgCancel = () => done(null);
     if (o.list){
       lst.innerHTML = o.list.map((x, i) => `<div class="qitem"><div class="t"><b>${esc(x.name)}</b><small>${esc(x.sub)}</small></div>
         <button class="b3d pri" data-l="load" data-i="${i}">불러오기</button><button class="b3d red" data-l="del" data-i="${i}">🗑</button></div>`).join("");
@@ -1087,6 +1148,8 @@ document.addEventListener("visibilitychange", () => {
 });
 setInterval(() => { if (!document.hidden) sync(false); }, CHECK_INTERVAL_MS);
 window.addEventListener("online", () => sync(false));
+// 모바일 데이터 → 와이파이로 바뀌면 미뤄둔 이미지 받기
+try{ navigator.connection && navigator.connection.addEventListener("change", () => { if (imgMode === "auto" && imgPending && !onCellular()) checkImages(); }); }catch(e){}
 
 /* =========================================================
    시작
