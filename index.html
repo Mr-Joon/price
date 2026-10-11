@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.6</title>
+<title>판매가 검색기 v1.0.7</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -39,6 +39,7 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
+html,body{overscroll-behavior-y:none}   /* 맨 위에서 쓸어내려도 새로고침되지 않게 */
 html,body{margin:0;background:var(--bg);color:var(--text);
   font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif}
 body{padding-bottom:env(safe-area-inset-bottom)}
@@ -302,7 +303,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.6";
+const VERSION = "1.0.7";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
@@ -697,7 +698,22 @@ function cardHtml(it, mainItem){
 }
 function emptyHtml(msg){ return `<div class="empty">${msg}</div>`; }
 
+/* ---------- 새로고침해도 검색어·탭 유지 (앱을 완전히 끄면 처음 화면) ---------- */
+const SS_SEARCH = "rps_search";
+function saveSearch(){
+  try{ sessionStorage.setItem(SS_SEARCH, JSON.stringify({ mode, a: $("qA").value, b: $("qB").value })); }catch(e){}
+}
+function restoreSearch(){
+  let st = null;
+  try{ st = JSON.parse(sessionStorage.getItem(SS_SEARCH)); }catch(e){}
+  if (!st) return;
+  $("qA").value = st.a || ""; $("qB").value = st.b || "";
+  for (const id of ["qA","qB"]) $(id).parentElement.classList.toggle("has", !!$(id).value);
+  if (st.mode === "cmp") setMode("cmp");
+}
+
 function render(){
+  saveSearch();
   const out = $("out");
   if (!items.length){ out.innerHTML = emptyHtml("데이터가 없습니다<br>☁ 데이터 받기 버튼을 눌러 주세요"); return; }
   const mainTerm = $("qA").value.trim();
@@ -1175,6 +1191,7 @@ try{ navigator.connection && navigator.connection.addEventListener("change", () 
    ========================================================= */
 lsDel("rps_data"); lsDel("rps_cfg");   // 이전 버전 저장값 정리
 if (loadCache()) showMetaStatus();
+restoreSearch();
 render();
 renderCart();
 updateImgInfo();
