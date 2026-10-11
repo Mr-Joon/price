@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.7</title>
+<title>판매가 검색기 v1.0.8</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -54,6 +54,10 @@ body{padding-bottom:env(safe-area-inset-bottom)}
 .titleBox .title{flex:none;max-width:100%}
 .logo{display:block;height:20px;width:auto;max-width:100%;object-fit:contain;cursor:pointer}
 .status{font-size:12px;color:var(--sub);margin:6px 0 8px;min-height:16px}
+.upd{display:flex;align-items:center;gap:8px;background:var(--chip);border:1.5px solid var(--brand);border-radius:12px;
+  padding:7px 8px 7px 12px;margin-bottom:8px;font-size:14px;font-weight:700}
+.upd span{flex:1}
+.upd .b3d{font-size:14px;padding:7px 12px}
 .status.err{color:var(--warn);font-weight:600}
 
 /* ===== 3D 버튼 ===== */
@@ -195,6 +199,7 @@ main{padding:10px 14px 30px}
 <body>
 
 <div class="top">
+  <div class="upd" id="updBar" hidden><span id="updText">새 버전이 있습니다</span><button class="b3d grn" id="btnUpd">업데이트</button></div>
   <div class="head">
     <div class="titleBox">
       <a href="https://hptkorea.co.kr/manual/" target="_blank" rel="noopener" title="HPT 매뉴얼"><img class="logo" alt="HPT" src="data:image/png;base64,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"></a>
@@ -303,7 +308,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.7";
+const VERSION = "1.0.8";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
@@ -787,7 +792,7 @@ async function driveFetch(url){
   }
   return r;
 }
-async function sync(force){
+async function sync(force, skipImg){
   if (syncing) return;
   syncing = true; lastCheck = Date.now();
   $("btnSync").disabled = true;
@@ -814,7 +819,8 @@ async function sync(force){
   }finally{
     syncing = false; $("btnSync").disabled = false;
   }
-  checkImages();
+  if (!skipImg) checkImages();
+  checkAppUpdate();
 }
 
 /* =========================================================
@@ -1160,12 +1166,40 @@ document.querySelectorAll(".clr").forEach(b => b.onclick = () => {
   const inp = $(b.dataset.for); inp.value = ""; inp.parentElement.classList.remove("has"); render(); inp.focus();
 });
 $("btnSync").onclick = async () => {
-  if (syncing) return;
+  if (syncing || imgBusy) return;
+  // 1) 가격표·이미지가 바뀌었는지 먼저 확인 (파일 정보만 조회, 데이터 거의 안 씀)
+  let ex, im = null;
+  $("btnSync").disabled = true;
+  try{
+    const base = "https://www.googleapis.com/drive/v3/files/" + EXCEL_FILE_ID;
+    ex = await (await driveFetch(`${base}?fields=modifiedTime&supportsAllDrives=true&key=${API_KEY}`)).json();
+    if (imgMode !== "off") im = await getImageZipInfo();   // 이미지 '끔'이면 이미지는 확인 안 함
+  }catch(e){
+    console.warn(e);
+    toast(navigator.onLine ? "확인 실패: " + e.message : "인터넷 연결을 확인하세요");
+    return;
+  }finally{ $("btnSync").disabled = false; }
+  lastCheck = Date.now();
+  const exChanged = !items.length || !meta || meta.source !== "drive" || meta.modifiedTime !== ex.modifiedTime;
+  const imChanged = !!im && (!imgMeta || !imgMeta.count || imgMeta.modifiedTime !== im.modifiedTime);
+  if (!exChanged && !imChanged){
+    showMetaStatus("최신");
+    toast("변경된 data가 없습니다 (최신 상태)");
+    checkAppUpdate();
+    return;
+  }
+  // 2) 바뀐 것이 있으면 무엇이 바뀌었는지 보여주고 물어봄
+  const what = [];
+  if (exChanged) what.push("· 가격표");
+  if (imChanged) what.push("· 제품 이미지" + (im.size ? ` (약 ${mb(Number(im.size))})` : ""));
   const when = meta && meta.dataDate ? `\n(현재 가격표: ${meta.dataDate} 기준)` : "";
   const r = await dialog({ title: "데이터 받기",
-    msg: "드라이브에서 최신 가격표를 받을까요?\n\n모바일 데이터 사용 시 요금이 발생할 수 있습니다." + when,
+    msg: "최신 data를 받을까요?\n\n변경된 항목\n" + what.join("\n") + "\n\n모바일 데이터 사용 시 요금이 발생할 수 있습니다." + when,
     buttons: [["아니오", null], ["예", "ok", "pri"]] });
-  if (r && r.btn === "ok") sync(true);
+  if (!r || r.btn !== "ok") return;
+  // 3) 바뀐 것만 받기
+  if (exChanged) await sync(true, true);
+  if (imChanged) await downloadImages(im);
 };
 
 // 검색 초기화 (PC 초기화와 동일): 두 검색창을 비우고 처음 화면으로
@@ -1179,7 +1213,9 @@ $("btnClearSearch").onclick = () => {
 
 // 앱으로 돌아왔을 때 5분 지났으면 변경 확인
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && Date.now() - lastCheck > CHECK_INTERVAL_MS) sync(false);
+  if (document.hidden) return;
+  if (Date.now() - lastCheck > CHECK_INTERVAL_MS) sync(false);
+  else checkAppUpdate();   // 앱으로 돌아올 때마다 새 버전 확인 (가벼움)
 });
 setInterval(() => { if (!document.hidden) sync(false); }, CHECK_INTERVAL_MS);
 window.addEventListener("online", () => sync(false));
@@ -1199,6 +1235,51 @@ updateImgInfo();
   if (imgMeta && imgMeta.count) { await loadImagesFromDb(); render(); }
   sync(false);
 })();
+
+/* =========================================================
+   새 버전 알림: GitHub에 새 버전을 올리면 화면 위에 [업데이트] 띠 표시
+   (sw.js 안의 버전 번호만 확인 → 1KB 정도라 데이터 거의 안 씀)
+   ========================================================= */
+let newVersion = null, updChecking = false;
+function verCmp(a, b){
+  const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number);
+  for (let i = 0; i < Math.max(x.length, y.length); i++){ const d = (x[i] || 0) - (y[i] || 0); if (d) return d; }
+  return 0;
+}
+async function checkAppUpdate(){
+  if (updChecking || !location.protocol.startsWith("http")) return;
+  updChecking = true;
+  try{
+    const r = await fetch("sw.js", { cache: "no-store" });
+    if (!r.ok) return;
+    const m = (await r.text()).match(/rps-v([\d.]+)/);
+    if (m && verCmp(m[1], VERSION) > 0){
+      newVersion = m[1];
+      $("updText").textContent = `새 버전(v${newVersion})이 있습니다`;
+      $("updBar").hidden = false;
+    }
+  }catch(e){}
+  finally{ updChecking = false; }
+}
+$("btnUpd").onclick = async () => {
+  const btn = $("btnUpd");
+  btn.disabled = true; btn.textContent = "업데이트 중…";
+  try{
+    // 새 화면을 미리 받아 두고 확인 (GitHub 반영이 덜 됐으면 기다리도록 안내)
+    const r = await fetch("index.html", { cache: "reload" });
+    const m = (await r.text()).match(/const VERSION = "([\d.]+)"/);
+    if (!m || verCmp(m[1], VERSION) <= 0){
+      toast("새 버전 준비 중입니다. 몇 분 뒤 다시 눌러 주세요");
+      btn.disabled = false; btn.textContent = "업데이트"; return;
+    }
+    try{ await fetch(location.pathname, { cache: "reload" }); }catch(e){}
+    try{ const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }catch(e){}
+  }catch(e){
+    toast("인터넷 연결을 확인하세요");
+    btn.disabled = false; btn.textContent = "업데이트"; return;
+  }
+  location.reload();   // 검색어·견적함은 그대로 유지됨
+};
 
 // 오프라인 실행용 서비스워커
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")){
