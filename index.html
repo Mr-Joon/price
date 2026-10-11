@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f5fbf">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="판매가검색기">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>판매가 검색기 v1.0.0</title>
+<style>
+/* ===== 색상 (라이트/다크 자동) ===== */
+:root{
+  --bg:#eef2f8; --card:#ffffff; --text:#1b2433; --sub:#6b7688; --line:#dde3ec;
+  --brand:#1f5fbf; --brand-d:#174a96; --reward:#d9480f; --ok:#2b8a3e; --warn:#c92a2a;
+  --btn:#f6f8fb; --btn-d:#c9d1dd; --chip:#e7eefb;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#11161f; --card:#1b2230; --text:#e7ecf4; --sub:#93a0b4; --line:#2b3446;
+    --brand:#4d8cf0; --brand-d:#2f63b8; --reward:#ff8a4c; --ok:#5cc275; --warn:#ff6b6b;
+    --btn:#263043; --btn-d:#0c1018; --chip:#22314b;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif}
+body{padding-bottom:env(safe-area-inset-bottom)}
+
+/* ===== 상단 고정 영역 ===== */
+.top{position:sticky;top:0;z-index:10;background:var(--bg);
+  padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;border-bottom:1px solid var(--line)}
+.head{display:flex;align-items:center;gap:8px}
+.title{font-size:19px;font-weight:800;color:var(--brand);flex:1;white-space:nowrap}
+.ver{font-size:11px;font-weight:600;color:var(--sub);margin-left:4px}
+.status{font-size:12px;color:var(--sub);margin:6px 0 8px;min-height:16px}
+.status.err{color:var(--warn);font-weight:600}
+
+/* ===== 3D 버튼 ===== */
+.b3d{border:none;border-radius:10px;background:var(--btn);color:var(--text);
+  font-size:15px;font-weight:700;padding:9px 12px;cursor:pointer;
+  box-shadow:0 3px 0 var(--btn-d),0 4px 8px rgba(0,0,0,.12);
+  transition:transform .05s,box-shadow .05s;font-family:inherit}
+.b3d:active{transform:translateY(3px);box-shadow:0 0 0 var(--btn-d),0 1px 3px rgba(0,0,0,.15)}
+.b3d.pri{background:var(--brand);color:#fff;box-shadow:0 3px 0 var(--brand-d),0 4px 8px rgba(0,0,0,.18)}
+.b3d.pri:active{box-shadow:0 0 0 var(--brand-d)}
+.icon{width:40px;height:40px;padding:0;font-size:19px;display:grid;place-items:center}
+
+/* ===== 모드 탭 ===== */
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.tabs .b3d.on{background:var(--brand);color:#fff;box-shadow:0 3px 0 var(--brand-d)}
+
+/* ===== 검색창 ===== */
+.sbox{position:relative;margin-bottom:8px}
+.sbox input{width:100%;font-size:17px;padding:12px 42px 12px 14px;border-radius:12px;
+  border:2px solid var(--line);background:var(--card);color:var(--text);outline:none;font-family:inherit}
+.sbox input:focus{border-color:var(--brand)}
+.sbox input::-webkit-search-cancel-button,.sbox input::-webkit-search-decoration{-webkit-appearance:none;appearance:none;display:none}
+.sbox .clr{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;
+  background:var(--line);color:var(--sub);width:26px;height:26px;border-radius:50%;
+  font-size:14px;display:none;cursor:pointer}
+.sbox.has .clr{display:block}
+.sbox .tag{position:absolute;left:-2px;top:-8px;font-size:10px;font-weight:800;color:#fff;
+  background:var(--brand);border-radius:6px;padding:1px 6px}
+.sbox .tag.b{background:var(--reward)}
+
+/* ===== 결과 ===== */
+main{padding:10px 14px 30px}
+.count{font-size:13px;color:var(--sub);margin:2px 2px 10px}
+.empty{text-align:center;color:var(--sub);padding:50px 10px;font-size:15px;line-height:1.7}
+.card{background:var(--card);border-radius:14px;padding:12px 14px;margin-bottom:10px;
+  box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid var(--line)}
+.card .row1{display:flex;align-items:baseline;gap:8px}
+.model{font-size:18px;font-weight:800;flex:1;word-break:break-all}
+.code{font-size:11px;color:var(--sub);white-space:nowrap}
+.desc{font-size:13px;color:var(--sub);margin:3px 0 8px;line-height:1.4}
+.prices{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.p{background:var(--bg);border-radius:9px;padding:6px 4px;text-align:center}
+.p .l{font-size:11px;color:var(--sub)}
+.p .v{font-size:15px;font-weight:800;margin-top:1px}
+.p.rw{background:var(--chip)}
+.p.rw .v{color:var(--reward)}
+.meta{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--sub);flex-wrap:wrap}
+.memo{background:var(--chip);border-radius:6px;padding:2px 7px;color:var(--text)}
+.link{margin-left:auto;color:var(--brand);font-weight:700;text-decoration:none;font-size:13px}
+
+/* ===== 비교 ===== */
+.cmp{background:var(--card);border-radius:14px;border:1px solid var(--line);overflow:hidden;margin-bottom:12px}
+.cmp table{width:100%;border-collapse:collapse;table-layout:fixed}
+.cmp th,.cmp td{padding:9px 6px;text-align:center;border-bottom:1px solid var(--line);font-size:14px;word-break:break-all}
+.cmp tr:last-child td{border-bottom:none}
+.cmp th{font-size:14px;font-weight:800;overflow-wrap:anywhere;word-break:normal}
+.cmp th.a{color:var(--brand)} .cmp th.b{color:var(--reward)}
+.cmp td.k{font-size:12px;color:var(--sub);width:62px}
+.cmp td.d{font-size:12px;font-weight:700;width:76px}
+.cmp td.rw{font-weight:800;color:var(--reward)}
+.cmp td.ds{font-size:11px;color:var(--sub);text-align:left}
+.up{color:var(--warn)} .dn{color:var(--ok)}
+.cands{margin:4px 0 12px}
+.cands .l{font-size:12px;color:var(--sub);margin:0 2px 6px;font-weight:700}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips .b3d{font-size:13px;padding:6px 10px}
+.chips .b3d.on{background:var(--brand);color:#fff;box-shadow:0 3px 0 var(--brand-d)}
+.chips.b .b3d.on{background:var(--reward);box-shadow:0 3px 0 #a33a0a}
+
+/* ===== 설정 시트 ===== */
+.mask{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:none}
+.mask.show{display:block}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:51;background:var(--card);
+  border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));
+  transform:translateY(105%);transition:transform .2s;max-height:88vh;overflow:auto}
+.sheet.show{transform:none}
+.sheet h3{margin:0 0 12px;font-size:17px}
+.sheet label{display:block;font-size:13px;font-weight:700;margin:12px 0 5px}
+.sheet input[type=text]{width:100%;font-size:14px;padding:10px;border-radius:10px;
+  border:1.5px solid var(--line);background:var(--bg);color:var(--text);font-family:inherit}
+.sheet .hint{font-size:12px;color:var(--sub);line-height:1.5;margin-top:4px}
+.sheet .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+.sheet .full{grid-column:1/-1}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  background:#222b3a;color:#fff;font-size:14px;padding:10px 16px;border-radius:20px;z-index:60;
+  opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:.95}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="head">
+    <div class="title">판매가 검색기<span class="ver" id="ver"></span></div>
+    <button class="b3d icon" id="btnSync" title="새로고침">⟳</button>
+    <button class="b3d icon" id="btnSet" title="설정">⚙</button>
+  </div>
+  <div class="status" id="status">데이터 준비 중…</div>
+  <div class="tabs">
+    <button class="b3d on" id="tabAll">통합검색</button>
+    <button class="b3d" id="tabCmp">비교검색</button>
+  </div>
+  <div class="sbox" id="boxA">
+    <span class="tag" id="tagA" hidden>A</span>
+    <input id="qA" type="search" placeholder="모델명 또는 제품명" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+    <button class="clr" data-for="qA">✕</button>
+  </div>
+  <div class="sbox" id="boxB" hidden>
+    <span class="tag b">B</span>
+    <input id="qB" type="search" placeholder="비교할 모델명" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+    <button class="clr" data-for="qB">✕</button>
+  </div>
+</div>
+
+<main id="out"></main>
+
+<!-- 설정 -->
+<div class="mask" id="mask"></div>
+<div class="sheet" id="sheet">
+  <h3>설정</h3>
+  <label>data.xlsx 드라이브 링크 또는 파일 ID</label>
+  <input type="text" id="inId" placeholder="https://drive.google.com/file/d/…" autocomplete="off">
+  <div class="hint">드라이브에서 data.xlsx → 공유 → "링크가 있는 모든 사용자" → 링크 복사 후 붙여넣기</div>
+  <label>구글 API 키</label>
+  <input type="text" id="inKey" placeholder="AIza…" autocomplete="off">
+  <div class="hint">Google Cloud에서 만든 Drive API 키</div>
+  <div class="btns">
+    <button class="b3d pri" id="btnSave">저장</button>
+    <button class="b3d" id="btnClose">닫기</button>
+    <button class="b3d full" id="btnFile">폰에서 xlsx 열기</button>
+    <button class="b3d full" id="btnReset">캐시 삭제</button>
+  </div>
+  <input type="file" id="fileIn" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+  <div class="hint" id="setInfo" style="margin-top:14px"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="xlsx.full.min.js"></script>
+<script>
+"use strict";
+/* =========================================================
+   판매가 검색기 (모바일 PWA)
+   - 데이터: 구글 드라이브 data.xlsx (Drive API v3 + API 키)
+   - 오프라인: 마지막 데이터를 폰(localStorage)에 저장
+   ========================================================= */
+const VERSION = "1.0.0";
+const CHECK_INTERVAL_MS = 5 * 60 * 1000;   // 5분마다 변경 확인
+const COMPARE_LIMIT = 3;                    // 비교검색 후보 수
+const ALL_LIMIT = 100;                      // 통합검색 최대 표시 수
+const LS = { cfg: "rps_cfg", data: "rps_data" };
+
+const $ = id => document.getElementById(id);
+document.getElementById("ver").textContent = " v" + VERSION;
+
+/* ---------- 저장소 (실패해도 앱은 동작) ---------- */
+function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+
+/* ---------- 상태 ---------- */
+let items = [];          // 상품 목록
+let meta = null;         // {sheetDate, modifiedTime, syncedAt, source}
+let mode = "all";        // all | cmp
+let selA = 0, selB = 0;  // 비교 선택 후보
+let syncing = false;
+let lastCheck = 0;
+
+/* ---------- 유틸 ---------- */
+function toast(msg){
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove("show"), 1800);
+}
+function won(n){ return (typeof n === "number" && isFinite(n)) ? Math.round(n).toLocaleString("ko-KR") : "-"; }
+function esc(s){ return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function hhmm(ts){ const d = new Date(ts), z = n => String(n).padStart(2,"0"); return `${d.getMonth()+1}/${d.getDate()} ${z(d.getHours())}:${z(d.getMinutes())}`; }
+function num(v){
+  if (typeof v === "number" && isFinite(v)) return v;
+  if (typeof v === "string"){ const x = Number(v.replace(/[,\s원]/g,"")); return (v.trim() && isFinite(x)) ? x : null; }
+  return null;
+}
+
+/* ---------- 검색용 정규화 (PC 버전과 동일 규칙) ---------- */
+const TOKEN_RE = /[가-힣]+|[a-z0-9]+/g;
+function tokens(s){ return (String(s||"").toLowerCase().match(TOKEN_RE)) || []; }
+function compact(s){ return tokens(s).join(""); }
+function stripTags(s){ return String(s||"").replace(/\([^)]*\)/g, ""); }   // (구형)(신형) 등 세대표기 제거
+
+/* ---------- 상세 링크 ---------- */
+function isSafeUrl(u){
+  try{ const x = new URL(String(u).trim()); return (x.protocol==="http:"||x.protocol==="https:") && !!x.hostname; }
+  catch(e){ return false; }
+}
+function buildProductUrl(model){
+  const slug = stripTags(model).toLowerCase().replace(/\s+/g, "");
+  if (!slug) return null;
+  return "https://hptkorea.co.kr/product/" + encodeURIComponent(slug) + "/";
+}
+
+/* ---------- 엑셀 → 상품목록 ---------- */
+function parseWorkbook(buf){
+  const wb = XLSX.read(buf, {type:"array"});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:null});
+  // 헤더 행 찾기 (B열이 "모델명")
+  let h = rows.findIndex(r => r && String(r[1]||"").trim() === "모델명");
+  if (h < 0) throw new Error("엑셀에서 '모델명' 헤더를 찾지 못했습니다");
+  let sheetDate = "";
+  for (let i=0;i<h;i++){ for (const c of rows[i]||[]){ if (c && /\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2}/.test(String(c))) sheetDate = String(c).trim(); } }
+
+  const list = [];
+  for (let i=h+1;i<rows.length;i++){
+    const r = rows[i] || [];
+    const model = String(r[1] ?? "").trim();
+    if (!model) continue;
+    const normal = num(r[4]), reward = num(r[6]), ship = num(r[7]);
+    if (normal===null && reward===null && ship===null) continue;   // 소제목/빈 행 제외
+    const site = String(r[8] ?? "").trim();
+    const desc = String(r[2] ?? "").trim();
+    list.push({
+      code: String(r[0] ?? "").trim(), model, desc,
+      box: String(r[3] ?? "").trim(),
+      normal, reward, ship,
+      url: isSafeUrl(site) ? site.trim() : null,
+      memo: (site && !isSafeUrl(site)) ? site : "",
+      // 미리 계산해 둔 검색 키
+      _base: compact(stripTags(model)),
+      _model: compact(model),
+      _all: compact(model + " " + desc),
+    });
+  }
+  if (!list.length) throw new Error("상품 데이터가 비어 있습니다");
+  return { items:list, sheetDate };
+}
+
+/* ---------- 검색 점수 ---------- */
+function score(it, q, qTok){
+  if (!q) return 0;
+  if (it._base === q || it._model === q) return 9999;        // 정확히 일치 최우선
+  for (const t of qTok) if (!it._all.includes(t)) return 0;  // 모든 단어 포함해야 함
+  let s = 1;
+  if (it._model.startsWith(q)) s += 500;
+  else if (it._model.includes(q)) s += 300;
+  for (const t of qTok){ if (it._model.includes(t)) s += 50; else s += 10; }
+  return s;
+}
+function search(query, limit){
+  const qTok = tokens(query), q = qTok.join("");
+  if (!q) return [];
+  const res = [];
+  for (const it of items){ const s = score(it, q, qTok); if (s>0) res.push([s, it]); }
+  res.sort((a,b) => b[0]-a[0] || a[1].model.localeCompare(b[1].model, "ko"));
+  return res.slice(0, limit).map(x => x[1]);
+}
+
+/* ---------- 화면 그리기 ---------- */
+function cardHtml(it){
+  const link = it.url || buildProductUrl(it.model);
+  return `<div class="card">
+    <div class="row1"><div class="model">${esc(it.model)}</div><div class="code">${esc(it.code)}</div></div>
+    <div class="desc">${esc(it.desc)}</div>
+    <div class="prices">
+      <div class="p"><div class="l">일반가</div><div class="v">${won(it.normal)}</div></div>
+      <div class="p rw"><div class="l">보상가</div><div class="v">${won(it.reward)}</div></div>
+      <div class="p"><div class="l">택배포함</div><div class="v">${won(it.ship)}</div></div>
+    </div>
+    <div class="meta">
+      ${it.box ? `<span>${esc(it.box)}</span>` : ""}
+      ${it.memo ? `<span class="memo">${esc(it.memo)}</span>` : ""}
+      ${link && isSafeUrl(link) ? `<a class="link" href="${esc(link)}" target="_blank" rel="noopener">상세 ›</a>` : ""}
+    </div>
+  </div>`;
+}
+function diffHtml(a, b){
+  if (typeof a!=="number" || typeof b!=="number") return "-";
+  const d = b - a;
+  if (d === 0) return "같음";
+  return `<span class="${d>0?"up":"dn"}">${d>0?"▲":"▼"}${won(Math.abs(d))}</span>`;
+}
+function emptyHtml(msg){ return `<div class="empty">${msg}</div>`; }
+
+function render(){
+  const out = $("out");
+  if (!items.length){ out.innerHTML = emptyHtml("데이터가 없습니다<br>⚙ 설정에서 드라이브 링크와 API 키를 입력하세요"); return; }
+
+  if (mode === "all"){
+    const q = $("qA").value;
+    if (!tokens(q).length){ out.innerHTML = emptyHtml(`검색할 모델명을 입력하세요<br><small>상품 ${items.length}개</small>`); return; }
+    const res = search(q, ALL_LIMIT);
+    out.innerHTML = res.length
+      ? `<div class="count">${res.length}${res.length>=ALL_LIMIT?"+":""}건</div>` + res.map(cardHtml).join("")
+      : emptyHtml("검색 결과 없음");
+    return;
+  }
+
+  // 비교검색
+  const ra = search($("qA").value, COMPARE_LIMIT), rb = search($("qB").value, COMPARE_LIMIT);
+  if (!ra.length && !rb.length){ out.innerHTML = emptyHtml("A와 B에 비교할 모델명을 입력하세요"); return; }
+  if (selA >= ra.length) selA = 0;
+  if (selB >= rb.length) selB = 0;
+  const a = ra[selA], b = rb[selB];
+  const cell = (it, f) => it ? won(it[f]) : "-";
+  let html = `<div class="cmp"><table>
+    <tr><td class="k"></td><th class="a">${a?esc(a.model):"A 없음"}</th><th class="b">${b?esc(b.model):"B 없음"}</th><td class="d">B-A</td></tr>
+    <tr><td class="k">일반가</td><td>${cell(a,"normal")}</td><td>${cell(b,"normal")}</td><td class="d">${diffHtml(a&&a.normal,b&&b.normal)}</td></tr>
+    <tr><td class="k">보상가</td><td class="rw">${cell(a,"reward")}</td><td class="rw">${cell(b,"reward")}</td><td class="d">${diffHtml(a&&a.reward,b&&b.reward)}</td></tr>
+    <tr><td class="k">택배포함</td><td>${cell(a,"ship")}</td><td>${cell(b,"ship")}</td><td class="d">${diffHtml(a&&a.ship,b&&b.ship)}</td></tr>
+    <tr><td class="k">제품</td><td class="ds">${a?esc(a.desc):""}</td><td class="ds">${b?esc(b.desc):""}</td><td></td></tr>
+  </table></div>`;
+  const chips = (list, sel, side) => list.length > 1
+    ? `<div class="cands"><div class="l">${side} 후보</div><div class="chips ${side==="B"?"b":""}">` +
+      list.map((it,i)=>`<button class="b3d ${i===sel?"on":""}" data-side="${side}" data-i="${i}">${esc(it.model)}</button>`).join("") +
+      `</div></div>` : "";
+  html += chips(ra, selA, "A") + chips(rb, selB, "B");
+  if (a) html += cardHtml(a);
+  if (b) html += cardHtml(b);
+  out.innerHTML = html;
+}
+
+/* ---------- 상태 표시 ---------- */
+function setStatus(msg, err){ const s = $("status"); s.textContent = msg; s.classList.toggle("err", !!err); }
+function showMetaStatus(extra){
+  if (!meta){ setStatus("데이터 없음", true); return; }
+  let m = `${meta.sheetDate ? meta.sheetDate + " 기준 · " : ""}${items.length}개 · ${hhmm(meta.syncedAt)} 갱신`;
+  if (meta.source === "file") m += " (폰 파일)";
+  if (extra) m += " · " + extra;
+  setStatus(m, false);
+}
+
+/* ---------- 데이터 적용 ---------- */
+function applyData(parsed, extraMeta){
+  items = parsed.items;
+  meta = Object.assign({ sheetDate: parsed.sheetDate, syncedAt: Date.now() }, extraMeta);
+  // 캐시에는 원본 필드만 저장 (검색 키는 다시 계산)
+  const slim = items.map(({_base,_model,_all,...rest}) => rest);
+  lsSet(LS.data, { items: slim, meta });
+  render(); showMetaStatus();
+}
+function loadCache(){
+  const c = lsGet(LS.data);
+  if (!c || !Array.isArray(c.items) || !c.items.length) return false;
+  items = c.items.map(it => Object.assign(it, {
+    _base: compact(stripTags(it.model)), _model: compact(it.model), _all: compact(it.model+" "+it.desc)
+  }));
+  meta = c.meta || null;
+  return true;
+}
+
+/* ---------- 구글 드라이브 동기화 ---------- */
+function getCfg(){ return lsGet(LS.cfg) || { fileId:"", apiKey:"" }; }
+function extractId(s){
+  s = String(s||"").trim();
+  let m = s.match(/\/d\/([a-zA-Z0-9_-]{15,})/) || s.match(/[?&]id=([a-zA-Z0-9_-]{15,})/);
+  if (m) return m[1];
+  return /^[a-zA-Z0-9_-]{15,}$/.test(s) ? s : "";
+}
+async function driveFetch(path){
+  const r = await fetch(path, { cache:"no-store" });
+  if (!r.ok){
+    let reason = "";
+    try{ const j = await r.json(); reason = (j.error && j.error.message) || ""; }catch(e){}
+    throw new Error(`드라이브 오류 ${r.status}${reason ? ": " + reason : ""}`);
+  }
+  return r;
+}
+async function sync(force){
+  if (syncing) return;
+  const cfg = getCfg();
+  if (!cfg.fileId || !cfg.apiKey){
+    if (!items.length) setStatus("⚙ 설정에서 드라이브 링크와 API 키를 입력하세요", true);
+    if (force) openSheet();
+    return;
+  }
+  syncing = true; lastCheck = Date.now();
+  $("btnSync").disabled = true;
+  const base = "https://www.googleapis.com/drive/v3/files/" + encodeURIComponent(cfg.fileId);
+  const key = "key=" + encodeURIComponent(cfg.apiKey);
+  try{
+    if (!items.length) setStatus("데이터 받는 중…");
+    // 1) 변경 여부만 먼저 확인 (가벼움)
+    const info = await (await driveFetch(`${base}?fields=modifiedTime,name&supportsAllDrives=true&${key}`)).json();
+    if (!force && meta && meta.source === "drive" && meta.modifiedTime === info.modifiedTime && items.length){
+      showMetaStatus("최신"); return;
+    }
+    // 2) 바뀌었으면 다운로드
+    setStatus("새 데이터 받는 중…");
+    const buf = await (await driveFetch(`${base}?alt=media&supportsAllDrives=true&${key}`)).arrayBuffer();
+    applyData(parseWorkbook(buf), { modifiedTime: info.modifiedTime, source:"drive" });
+    if (force) toast("최신 데이터로 갱신했습니다");
+  }catch(e){
+    console.warn(e);
+    const offline = !navigator.onLine;
+    if (items.length){ showMetaStatus(offline ? "오프라인" : "갱신 실패"); $("status").classList.add("err"); }
+    else setStatus((offline ? "오프라인: " : "") + e.message, true);
+    if (force) toast(offline ? "인터넷 연결을 확인하세요" : "갱신 실패");
+  }finally{
+    syncing = false; $("btnSync").disabled = false;
+  }
+}
+
+/* ---------- 설정 시트 ---------- */
+function openSheet(){
+  const c = getCfg();
+  $("inId").value = c.fileId || ""; $("inKey").value = c.apiKey || "";
+  $("setInfo").textContent = `v${VERSION}` + (meta ? ` · 데이터 ${items.length}개` : "");
+  $("mask").classList.add("show"); $("sheet").classList.add("show");
+}
+function closeSheet(){ $("mask").classList.remove("show"); $("sheet").classList.remove("show"); }
+$("btnSet").onclick = openSheet;
+$("btnClose").onclick = closeSheet;
+$("mask").onclick = closeSheet;
+$("btnSave").onclick = () => {
+  const id = extractId($("inId").value), key = $("inKey").value.trim();
+  if (!id){ toast("드라이브 링크를 확인하세요"); return; }
+  if (!key){ toast("API 키를 입력하세요"); return; }
+  lsSet(LS.cfg, { fileId:id, apiKey:key });
+  closeSheet(); sync(true);
+};
+$("btnFile").onclick = () => $("fileIn").click();
+$("fileIn").onchange = async (ev) => {
+  const f = ev.target.files && ev.target.files[0]; ev.target.value = "";
+  if (!f) return;
+  try{ applyData(parseWorkbook(await f.arrayBuffer()), { source:"file" }); closeSheet(); toast("파일을 불러왔습니다"); }
+  catch(e){ toast(e.message); }
+};
+$("btnReset").onclick = () => {
+  lsDel(LS.data); items = []; meta = null; render(); setStatus("캐시 삭제됨"); closeSheet(); sync(true);
+};
+
+/* ---------- 모드/입력 이벤트 ---------- */
+function setMode(m){
+  mode = m;
+  $("tabAll").classList.toggle("on", m==="all");
+  $("tabCmp").classList.toggle("on", m==="cmp");
+  $("boxB").hidden = (m!=="cmp");
+  $("tagA").hidden = (m!=="cmp");
+  $("qA").placeholder = m==="cmp" ? "기준 모델명" : "모델명 또는 제품명";
+  selA = selB = 0; render();
+}
+$("tabAll").onclick = () => setMode("all");
+$("tabCmp").onclick = () => { setMode("cmp"); if (!$("qB").value) $("qB").focus(); };
+
+let renderTimer = null;
+function onInput(e){
+  const box = e.target.parentElement; box.classList.toggle("has", !!e.target.value);
+  if (e.target.id==="qA") selA = 0; else selB = 0;
+  clearTimeout(renderTimer); renderTimer = setTimeout(render, 80);   // 한글 조합 중에도 실시간 검색
+}
+for (const id of ["qA","qB"]){
+  $(id).addEventListener("input", onInput);
+  $(id).addEventListener("compositionupdate", e => { clearTimeout(renderTimer); renderTimer = setTimeout(render, 80); });
+  $(id).addEventListener("keydown", e => { if (e.key==="Enter") e.target.blur(); });  // 엔터 → 키보드 닫기
+}
+document.querySelectorAll(".clr").forEach(b => b.onclick = () => {
+  const inp = $(b.dataset.for); inp.value = ""; inp.parentElement.classList.remove("has"); render(); inp.focus();
+});
+$("out").addEventListener("click", e => {
+  const b = e.target.closest("button[data-side]"); if (!b) return;
+  if (b.dataset.side==="A") selA = +b.dataset.i; else selB = +b.dataset.i;
+  render();
+});
+$("btnSync").onclick = () => sync(true);
+
+// 앱으로 돌아왔을 때 5분 지났으면 변경 확인
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && Date.now() - lastCheck > CHECK_INTERVAL_MS) sync(false);
+});
+setInterval(() => { if (!document.hidden) sync(false); }, CHECK_INTERVAL_MS);
+window.addEventListener("online", () => sync(false));
+
+/* ---------- 시작 ---------- */
+if (loadCache()) showMetaStatus();
+render();
+sync(false);
+
+// 오프라인 실행용 서비스워커
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")){
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+</script>
+</body>
+</html>
