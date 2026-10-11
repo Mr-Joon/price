@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.5</title>
+<title>판매가 검색기 v1.0.6</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -73,7 +73,9 @@ body{padding-bottom:env(safe-area-inset-bottom)}
   background:var(--warn);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;border:2px solid var(--bg)}
 
 /* ===== 모드 탭 ===== */
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.tabs{display:grid;grid-template-columns:1fr 1fr 44px;gap:8px;margin-bottom:10px}
+.tabs .icon{width:44px;height:auto;min-height:40px}
+.ico{width:22px;height:22px;display:block}
 
 /* ===== 검색창 ===== */
 .srow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
@@ -198,13 +200,14 @@ main{padding:10px 14px 30px}
       <div class="title">판매가 검색기<span class="ver" id="ver"></span></div>
     </div>
     <button class="b3d icon cartBtn" id="btnCart" title="견적함">🛒<span class="badge" id="cartBadge" hidden>0</span></button>
-    <button class="b3d icon" id="btnSync" title="새로고침">⟳</button>
+    <button class="b3d icon" id="btnSync" title="데이터 받기" aria-label="데이터 받기"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18.5H6.5a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 17.6 8.1 4.75 4.75 0 0 1 17.5 18.5H17"/><path d="M12 11v9"/><path d="m8.5 16.5 3.5 3.5 3.5-3.5"/></svg></button>
     <button class="b3d icon" id="btnSet" title="설정">⚙</button>
   </div>
   <div class="status" id="status">데이터 준비 중…</div>
   <div class="tabs">
     <button class="b3d on" id="tabAll">통합검색</button>
     <button class="b3d" id="tabCmp">비교검색</button>
+    <button class="b3d icon" id="btnClearSearch" title="검색 초기화" aria-label="검색 초기화"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4v5h5"/></svg></button>
   </div>
   <div class="srow">
     <div class="sbox" id="boxA">
@@ -299,7 +302,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.5";
+const VERSION = "1.0.6";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
@@ -696,7 +699,7 @@ function emptyHtml(msg){ return `<div class="empty">${msg}</div>`; }
 
 function render(){
   const out = $("out");
-  if (!items.length){ out.innerHTML = emptyHtml("데이터가 없습니다<br>⟳ 새로고침을 눌러 주세요"); return; }
+  if (!items.length){ out.innerHTML = emptyHtml("데이터가 없습니다<br>☁ 데이터 받기 버튼을 눌러 주세요"); return; }
   const mainTerm = $("qA").value.trim();
   const cmpTerm = mode === "cmp" ? $("qB").value.trim() : "";
   if (!normalizeQuery(mainTerm)){
@@ -984,7 +987,7 @@ async function copyText(t){
 }
 function quoteOrToast(){
   if (!cart.entries.length){ toast("견적함이 비어 있습니다"); return null; }
-  if (!items.length){ toast("가격표가 없어 견적을 만들 수 없습니다 (⟳ 새로고침)"); return null; }
+  if (!items.length){ toast("가격표가 없어 견적을 만들 수 없습니다 (☁ 데이터 받기)"); return null; }
   return buildQuoteText();
 }
 $("btnCopy").onclick = async () => {
@@ -1140,7 +1143,23 @@ for (const id of ["qA","qB"]){
 document.querySelectorAll(".clr").forEach(b => b.onclick = () => {
   const inp = $(b.dataset.for); inp.value = ""; inp.parentElement.classList.remove("has"); render(); inp.focus();
 });
-$("btnSync").onclick = () => sync(true);
+$("btnSync").onclick = async () => {
+  if (syncing) return;
+  const when = meta && meta.dataDate ? `\n(현재 가격표: ${meta.dataDate} 기준)` : "";
+  const r = await dialog({ title: "데이터 받기",
+    msg: "드라이브에서 최신 가격표를 받을까요?\n\n모바일 데이터 사용 시 요금이 발생할 수 있습니다." + when,
+    buttons: [["아니오", null], ["예", "ok", "pri"]] });
+  if (r && r.btn === "ok") sync(true);
+};
+
+// 검색 초기화 (PC 초기화와 동일): 두 검색창을 비우고 처음 화면으로
+$("btnClearSearch").onclick = () => {
+  clearTimeout(renderTimer);
+  for (const id of ["qA","qB"]){ $(id).value = ""; $(id).parentElement.classList.remove("has"); }
+  setMode("all");
+  window.scrollTo(0, 0);
+  $("qA").focus();
+};
 
 // 앱으로 돌아왔을 때 5분 지났으면 변경 확인
 document.addEventListener("visibilitychange", () => {
