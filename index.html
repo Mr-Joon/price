@@ -3,27 +3,37 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1f5fbf">
+<meta name="theme-color" content="#eef2f8" id="metaTheme">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="판매가검색기">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.1</title>
+<title>판매가 검색기 v1.0.2</title>
+<script>
+  // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
+  try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
+</script>
 <style>
-/* ===== 색상 (라이트/다크 자동) ===== */
+/* ===== 색상: 라이트 기본 / 다크는 [설정] 또는 폰 설정(자동)을 따름 ===== */
 :root{
   --bg:#eef2f8; --card:#ffffff; --text:#1b2433; --sub:#6b7688; --line:#dde3ec;
   --brand:#1f5fbf; --brand-d:#174a96; --reward:#d9480f; --ok:#2b8a3e; --warn:#c92a2a;
-  --cmp:#7048e8; --cmp-bg:#f3f0ff; --cmp-line:#d0bfff;
-  --btn:#f6f8fb; --btn-d:#c9d1dd; --chip:#e7eefb;
+  --cmp:#7048e8; --cmp-d:#5235b8; --cmp-bg:#f3f0ff; --cmp-line:#d0bfff;
+  --btn:#f6f8fb; --btn-d:#c9d1dd; --chip:#e7eefb; --thumb:#ffffff;
+}
+:root[data-theme="dark"]{
+  --bg:#11161f; --card:#1b2230; --text:#e7ecf4; --sub:#93a0b4; --line:#2b3446;
+  --brand:#4d8cf0; --brand-d:#2f63b8; --reward:#ff8a4c; --ok:#5cc275; --warn:#ff6b6b;
+  --cmp:#b197fc; --cmp-d:#7a5fd0; --cmp-bg:#231d38; --cmp-line:#4b3d7a;
+  --btn:#263043; --btn-d:#0c1018; --chip:#22314b; --thumb:#f4f6f9;
 }
 @media (prefers-color-scheme: dark){
-  :root{
+  :root:not([data-theme="light"]){
     --bg:#11161f; --card:#1b2230; --text:#e7ecf4; --sub:#93a0b4; --line:#2b3446;
     --brand:#4d8cf0; --brand-d:#2f63b8; --reward:#ff8a4c; --ok:#5cc275; --warn:#ff6b6b;
-    --cmp:#b197fc; --cmp-bg:#231d38; --cmp-line:#4b3d7a;
-    --btn:#263043; --btn-d:#0c1018; --chip:#22314b;
+    --cmp:#b197fc; --cmp-d:#7a5fd0; --cmp-bg:#231d38; --cmp-line:#4b3d7a;
+    --btn:#263043; --btn-d:#0c1018; --chip:#22314b; --thumb:#f4f6f9;
   }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -47,13 +57,13 @@ body{padding-bottom:env(safe-area-inset-bottom)}
   box-shadow:0 3px 0 var(--btn-d),0 4px 8px rgba(0,0,0,.12);
   transition:transform .05s,box-shadow .05s;font-family:inherit}
 .b3d:active{transform:translateY(3px);box-shadow:0 0 0 var(--btn-d),0 1px 3px rgba(0,0,0,.15)}
-.b3d.pri{background:var(--brand);color:#fff;box-shadow:0 3px 0 var(--brand-d),0 4px 8px rgba(0,0,0,.18)}
-.b3d.pri:active{box-shadow:0 0 0 var(--brand-d)}
+.b3d:disabled{opacity:.5}
+.b3d.pri,.b3d.on{background:var(--brand);color:#fff;box-shadow:0 3px 0 var(--brand-d),0 4px 8px rgba(0,0,0,.18)}
+.b3d.pri:active,.b3d.on:active{box-shadow:0 0 0 var(--brand-d)}
 .icon{width:40px;height:40px;padding:0;font-size:19px;display:grid;place-items:center;flex:none}
 
 /* ===== 모드 탭 ===== */
 .tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
-.tabs .b3d.on{background:var(--brand);color:#fff;box-shadow:0 3px 0 var(--brand-d)}
 
 /* ===== 검색창 ===== */
 .srow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
@@ -78,12 +88,15 @@ main{padding:10px 14px 30px}
 .empty{text-align:center;color:var(--sub);padding:50px 10px;font-size:15px;line-height:1.7}
 .card{background:var(--card);border-radius:14px;padding:12px 14px;margin-bottom:10px;
   box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid var(--line)}
-.card.c{background:var(--cmp-bg);border-color:var(--cmp-line);margin-left:14px;
-  border-left:4px solid var(--cmp)}
+.card.c{background:var(--cmp-bg);border-color:var(--cmp-line);margin-left:14px;border-left:4px solid var(--cmp)}
+.chead{display:flex;gap:10px;align-items:flex-start;margin-bottom:8px}
+.chead .txt{flex:1;min-width:0}
+.thumb{width:76px;height:76px;flex:none;border-radius:10px;background:var(--thumb);
+  object-fit:contain;padding:3px;border:1px solid var(--line);cursor:zoom-in}
 .model{font-size:18px;font-weight:800;word-break:break-all}
 .card.c .model{font-size:16px;color:var(--cmp)}
 .card.c .model small{font-size:11px;font-weight:700;margin-right:4px}
-.desc{font-size:13px;color:var(--sub);margin:3px 0 8px;line-height:1.4}
+.desc{font-size:13px;color:var(--sub);margin-top:3px;line-height:1.4}
 .prices{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .p{background:var(--bg);border-radius:9px;padding:6px 8px}
 .card.c .p{background:var(--card)}
@@ -97,6 +110,11 @@ main{padding:10px 14px 30px}
 .link{margin-left:auto;color:var(--brand);font-weight:700;text-decoration:none;font-size:13px}
 .nolink{margin-left:auto}
 
+/* ===== 이미지 크게 보기 ===== */
+.viewer{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.75);display:grid;place-items:center;padding:24px}
+.viewer img{max-width:100%;max-height:70vh;background:#fff;border-radius:14px;padding:10px}
+.viewer div{color:#fff;font-weight:800;font-size:17px;margin-top:12px;text-align:center}
+
 /* ===== 설정 시트 ===== */
 .mask{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:none}
 .mask.show{display:block}
@@ -104,15 +122,17 @@ main{padding:10px 14px 30px}
   border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));
   transform:translateY(105%);transition:transform .2s;max-height:88vh;overflow:auto}
 .sheet.show{transform:none}
-.sheet h3{margin:0 0 12px;font-size:17px}
-.sheet label{display:block;font-size:13px;font-weight:700;margin:12px 0 5px}
-.sheet input[type=text]{width:100%;font-size:14px;padding:10px;border-radius:10px;
-  border:1.5px solid var(--line);background:var(--bg);color:var(--text);font-family:inherit}
-.sheet .hint{font-size:12px;color:var(--sub);line-height:1.5;margin-top:4px}
-.sheet .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
-.sheet .full{grid-column:1/-1}
+.sheet h3{margin:0 0 4px;font-size:17px}
+.sheet .sec{margin-top:16px}
+.sheet .lab{font-size:13px;font-weight:800;margin-bottom:8px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.seg .b3d{font-size:14px;padding:9px 6px}
+.sheet .hint{font-size:12px;color:var(--sub);line-height:1.5;margin-top:8px}
+.sheet .hint.new{color:var(--reward);font-weight:700}
+.sheet .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.sheet .full{width:100%;margin-top:18px}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);
-  background:#222b3a;color:#fff;font-size:14px;padding:10px 16px;border-radius:20px;z-index:60;
+  background:#222b3a;color:#fff;font-size:14px;padding:10px 16px;border-radius:20px;z-index:80;
   opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:.95}
 </style>
@@ -153,43 +173,71 @@ main{padding:10px 14px 30px}
 <div class="mask" id="mask"></div>
 <div class="sheet" id="sheet">
   <h3>설정</h3>
-  <label>data.xlsx 드라이브 링크 또는 파일 ID</label>
-  <input type="text" id="inId" autocomplete="off">
-  <div class="hint">비워 두고 저장하면 기본값으로 돌아갑니다</div>
-  <label>구글 API 키</label>
-  <input type="text" id="inKey" autocomplete="off">
-  <div class="hint">비워 두고 저장하면 기본값으로 돌아갑니다</div>
-  <div class="btns">
-    <button class="b3d pri" id="btnSave">저장</button>
-    <button class="b3d" id="btnClose">닫기</button>
-    <button class="b3d full" id="btnFile">폰에서 xlsx 열기</button>
-    <button class="b3d full" id="btnReset">캐시 삭제</button>
+
+  <div class="sec">
+    <div class="lab">화면</div>
+    <div class="seg" id="segTheme">
+      <button class="b3d" data-v="auto">자동</button>
+      <button class="b3d" data-v="light">라이트</button>
+      <button class="b3d" data-v="dark">다크</button>
+    </div>
+    <div class="hint">자동: 폰의 다크모드 설정을 따릅니다</div>
   </div>
+
+  <div class="sec">
+    <div class="lab">제품 이미지</div>
+    <div class="seg" id="segImg">
+      <button class="b3d" data-v="off">끔</button>
+      <button class="b3d" data-v="manual">수동</button>
+      <button class="b3d" data-v="auto">자동</button>
+    </div>
+    <div class="hint" id="imgInfo"></div>
+    <div class="row2" id="imgBtns">
+      <button class="b3d" id="btnImgGet">이미지 받기</button>
+      <button class="b3d" id="btnImgDel">이미지 삭제</button>
+    </div>
+    <div class="hint">수동: 받기 버튼을 눌렀을 때만 받습니다<br>자동: 드라이브 이미지가 바뀌면 알아서 받습니다 (약 30MB, 와이파이 권장)</div>
+  </div>
+
+  <div class="sec">
+    <div class="lab">데이터</div>
+    <div class="row2" style="margin-top:0">
+      <button class="b3d" id="btnFile">폰 xlsx 열기</button>
+      <button class="b3d" id="btnReset">캐시 삭제</button>
+    </div>
+  </div>
+
+  <button class="b3d pri full" id="btnClose">닫기</button>
   <input type="file" id="fileIn" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
-  <div class="hint" id="setInfo" style="margin-top:14px"></div>
+  <div class="hint" id="setInfo" style="text-align:center"></div>
 </div>
+<div class="viewer" id="viewer" hidden><div><img id="viewImg" alt=""><div id="viewName"></div></div></div>
 <div class="toast" id="toast"></div>
 
 <script src="xlsx.full.min.js"></script>
+<script src="jszip.min.js"></script>
 <script>
 "use strict";
 /* =========================================================
    판매가 검색기 (모바일 PWA)
    - 검색/비교/카드 규칙: PC 판매가검색기 v6.3.21과 동일
-   - 데이터: 구글 드라이브 data.xlsx (Drive API v3 + API 키)
-   - 오프라인: 마지막 데이터를 폰(localStorage)에 저장
+   - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
+   - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.1";
+const VERSION = "1.0.2";
 
-// 기본 접속 정보 (설정에서 바꾸면 그 값이 우선)
-const DEFAULT_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx (PC 앱 EXCEL_FILE_ID)
-const DEFAULT_API_KEY = "AIzaSyAMB2G_RWePWk0q0jddOmxscXNMeC3EuxM";  // mr-joon.github.io 전용 키
+// 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
+const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
+const IMAGE_ZIP_ID  = "1sfNfJwTvrK8yAlYOOoB__tNHf21VbvG8";        // 제품 이미지 zip
+const API_KEY       = "AIzaSyAMB2G_RWePWk0q0jddOmxscXNMeC3EuxM";  // mr-joon.github.io 전용 키
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;   // 5분마다 변경 확인
 const DISPLAY_LIMIT = 100;                  // 검색 결과 표시 개수 상한 (PC와 동일)
 const COMPARE_DISPLAY_LIMIT = 3;            // 메인 제품 1개당 비교 제품 수 (PC와 동일)
 const SHIPPING_FEE = 4000;                  // 택배비 (PC와 동일)
-const LS = { cfg: "rps_cfg", data: "rps_data2" };
+const THUMB_MAX = 360;                      // 폰에 저장할 이미지 최대 크기(px)
+const IMAGE_EXTS = ["png","gif","jpg","jpeg"];
+const LS = { data:"rps_data2", theme:"rps_theme", imgMode:"rps_img_mode", imgMeta:"rps_img_meta" };
 
 // 엑셀 열 번호 (0부터, PC와 동일)
 const COL_MODEL = 1, COL_DESC = 2, COL_BOX = 3, COL_NORMAL = 4, COL_DATE = 5, COL_REWARD = 6, COL_URL = 8;
@@ -201,6 +249,8 @@ $("ver").textContent = " v" + VERSION;
 function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
 function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
 function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+function lsGetStr(k, def){ try{ return localStorage.getItem(k) || def; }catch(e){ return def; } }
+function lsSetStr(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
 
 /* ---------- 상태 ---------- */
 let items = [];          // 상품 목록
@@ -213,20 +263,38 @@ const searchCache = new Map();
 /* ---------- 유틸 ---------- */
 function toast(msg){
   const t = $("toast"); t.textContent = msg; t.classList.add("show");
-  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove("show"), 1800);
+  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove("show"), 2000);
 }
 function esc(s){ return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function hhmm(ts){ const d = new Date(ts), z = n => String(n).padStart(2,"0"); return `${d.getMonth()+1}/${d.getDate()} ${z(d.getHours())}:${z(d.getMinutes())}`; }
 function text(v){ return v === null || v === undefined ? "" : String(v).trim(); }
 function comma(n){ return Math.trunc(n).toLocaleString("ko-KR"); }
+function mb(bytes){ return (bytes / 1048576).toFixed(1) + "MB"; }
 
-/* ---------- 가격 (PC: parse_price_int / format_price_str) ---------- */
+/* =========================================================
+   테마 (자동 / 라이트 / 다크)
+   ========================================================= */
+function applyTheme(v){
+  if (v === "light" || v === "dark") document.documentElement.dataset.theme = v;
+  else delete document.documentElement.dataset.theme;
+  const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+  $("metaTheme").setAttribute("content", bg || "#eef2f8");
+  document.querySelectorAll("#segTheme .b3d").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+}
+let themeMode = lsGetStr(LS.theme, "auto");
+applyTheme(themeMode);
+document.querySelectorAll("#segTheme .b3d").forEach(b => b.onclick = () => {
+  themeMode = b.dataset.v; lsSetStr(LS.theme, themeMode); applyTheme(themeMode);
+});
+try{ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => applyTheme(themeMode)); }catch(e){}
+
+/* =========================================================
+   가격 / 링크 / 검색 (PC v6.3.21 규칙)
+   ========================================================= */
 function parsePriceInt(v){
   const n = Number(String(v ?? "0").replace(/,/g,"").trim());
   return (String(v ?? "").trim() !== "" && isFinite(n)) ? Math.trunc(n) : 0;
 }
-
-/* ---------- 상세 링크 (PC: build_product_url / is_safe_web_url) ---------- */
 function isSafeUrl(u){
   try{ const x = new URL(String(u).trim()); return (x.protocol==="http:"||x.protocol==="https:") && !!x.hostname; }
   catch(e){ return false; }
@@ -241,12 +309,8 @@ function productUrl(it){
   const u = it.customUrl || buildProductUrl(it.model);
   return u && isSafeUrl(u) ? u : null;
 }
-
-/* ---------- 검색 키 (PC: make_search_key / normalize_query) ---------- */
 function makeSearchKey(model, desc){ return (model + desc).toLowerCase().replace(/ /g, ""); }
 function normalizeQuery(t){ return (t || "").toLowerCase().replace(/ /g, ""); }
-
-/* ---------- 비교 스코어링 (PC: tokenize_model_name / strip_generation_tag / smart_match) ---------- */
 function tokenize(t){ return String(t).toLowerCase().match(/[가-힣]+|[a-z0-9]+/g) || []; }
 function stripGen(name){ return String(name).replace(/\s*[\(（][^\)）]*[\)）]/g, "").trim(); }
 function preparePool(list){ return list.map(it => [it, stripGen(it.model), new Set(tokenize(it.model))]); }
@@ -262,6 +326,15 @@ function smartMatch(mainName, pool, limit = COMPARE_DISPLAY_LIMIT){
   });
   scored.sort((a,b) => b[0]-a[0] || a[1]-b[1]);   // 점수 높은 순, 동점이면 원래 순서
   return scored.slice(0, limit).map(x => x[2]);
+}
+function searchAll(query){
+  const q = normalizeQuery(query);
+  if (!q) return [];
+  if (searchCache.has(q)) return searchCache.get(q);
+  const matched = items.filter(it => it.key.includes(q));
+  if (searchCache.size >= 256) searchCache.clear();
+  searchCache.set(q, matched);
+  return matched;
 }
 
 /* ---------- 엑셀 → 상품목록 (PC: _read_excel) ---------- */
@@ -287,11 +360,10 @@ function parseWorkbook(buf){
     if (row.length < 7) return;
     const model = text(row[COL_MODEL]);
     if (!model || model.toLowerCase() === "none" || model === "모델명") return;   // 제목행 제외
-    const desc = text(row[COL_DESC]);
     const memoRaw = text(row[COL_URL]);
     const cu = customUrl(row[COL_URL]);
     list.push({
-      model, desc,
+      model, desc: text(row[COL_DESC]),
       box: text(row[COL_BOX]),
       n: parsePriceInt(row[COL_NORMAL]),
       r: parsePriceInt(row[COL_REWARD]),
@@ -307,18 +379,198 @@ function indexItems(){
   searchCache.clear();
 }
 
-/* ---------- 검색 (PC: search_all) ---------- */
-function searchAll(query){
-  const q = normalizeQuery(query);
-  if (!q) return [];
-  if (searchCache.has(q)) return searchCache.get(q);
-  const matched = items.filter(it => it.key.includes(q));
-  if (searchCache.size >= 256) searchCache.clear();
-  searchCache.set(q, matched);
-  return matched;
+/* =========================================================
+   제품 이미지 (드라이브 zip → 썸네일 → IndexedDB)
+   ========================================================= */
+let imgMode = lsGetStr(LS.imgMode, "off");     // off | manual | auto
+let imgMeta = lsGet(LS.imgMeta);                // {modifiedTime, count, size, savedAt}
+let imgUrls = new Map();                        // 이미지키 -> blob URL
+let imgBusy = false;
+let imgPending = null;                          // 드라이브에 새 이미지가 있을 때 {modifiedTime, size}
+let imgProgress = "";
+
+function imageKey(name){ return String(name).replace(/ /g, "").toLowerCase(); }   // PC: 공백 제거 + 소문자
+
+// IndexedDB 도우미
+function idbOpen(){
+  return new Promise((res, rej) => {
+    const r = indexedDB.open("rps-images", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("img");
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function idbReplaceAll(entries){
+  const db = await idbOpen();
+  await new Promise((res, rej) => {
+    const tx = db.transaction("img", "readwrite"), st = tx.objectStore("img");
+    st.clear();
+    for (const [k, blob] of entries) st.put(blob, k);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error);
+  });
+  db.close();
+}
+async function idbReadAll(){
+  const db = await idbOpen();
+  const out = await new Promise((res, rej) => {
+    const tx = db.transaction("img", "readonly"), st = tx.objectStore("img");
+    const map = new Map();
+    const cur = st.openCursor();
+    cur.onsuccess = () => { const c = cur.result; if (c){ map.set(c.key, c.value); c.continue(); } else res(map); };
+    cur.onerror = () => rej(cur.error);
+  });
+  db.close();
+  return out;
+}
+async function idbClear(){ try{ await idbReplaceAll([]); }catch(e){} }
+
+function setImgUrls(map){
+  for (const u of imgUrls.values()) URL.revokeObjectURL(u);
+  imgUrls = new Map();
+  for (const [k, blob] of map) imgUrls.set(k, URL.createObjectURL(blob));
+}
+async function loadImagesFromDb(){
+  try{ setImgUrls(await idbReadAll()); }catch(e){ console.warn("이미지 불러오기 실패", e); }
 }
 
-/* ---------- 카드 (PC: ProductCard) ---------- */
+// zip 안의 한글 파일명: UTF-8이 아니면 윈도우 한글(CP949)로 읽음
+function decodeZipName(bytes){
+  try{ return new TextDecoder("utf-8", {fatal:true}).decode(bytes); }
+  catch(e){ try{ return new TextDecoder("euc-kr").decode(bytes); }catch(e2){ return String.fromCharCode(...bytes); } }
+}
+
+// 이미지 1장을 THUMB_MAX 안으로 줄여서 저장용 blob으로
+const webpOk = (() => { try{ const c = document.createElement("canvas"); c.width = c.height = 1; return c.toDataURL("image/webp").startsWith("data:image/webp"); }catch(e){ return false; } })();
+async function makeThumb(blob){
+  const bmp = await createImageBitmap(blob);
+  const scale = Math.min(1, THUMB_MAX / Math.max(bmp.width, bmp.height));
+  const w = Math.max(1, Math.round(bmp.width * scale)), h = Math.max(1, Math.round(bmp.height * scale));
+  const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+  cv.getContext("2d").drawImage(bmp, 0, 0, w, h);
+  if (bmp.close) bmp.close();
+  return await new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error("이미지 변환 실패")), webpOk ? "image/webp" : "image/png", 0.85));
+}
+
+// 다운로드 (진행률 표시)
+async function fetchWithProgress(url, onProgress){
+  const r = await driveFetch(url);
+  const total = Number(r.headers.get("Content-Length")) || 0;
+  if (!r.body || !r.body.getReader) return await r.arrayBuffer();
+  const reader = r.body.getReader(), chunks = [];
+  let got = 0;
+  for (;;){
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value); got += value.length;
+    onProgress(got, total);
+  }
+  const buf = new Uint8Array(got); let pos = 0;
+  for (const c of chunks){ buf.set(c, pos); pos += c.length; }
+  return buf.buffer;
+}
+
+function setImgProgress(msg){ imgProgress = msg; updateImgInfo(); }
+
+async function getImageZipInfo(){
+  const base = "https://www.googleapis.com/drive/v3/files/" + IMAGE_ZIP_ID;
+  return await (await driveFetch(`${base}?fields=modifiedTime,size&supportsAllDrives=true&key=${API_KEY}`)).json();
+}
+
+async function downloadImages(info){
+  if (imgBusy) return;
+  imgBusy = true; updateImgInfo();
+  try{
+    if (!info) info = await getImageZipInfo();
+    const base = "https://www.googleapis.com/drive/v3/files/" + IMAGE_ZIP_ID;
+    const buf = await fetchWithProgress(`${base}?alt=media&supportsAllDrives=true&key=${API_KEY}`, (got, total) => {
+      setImgProgress(total ? `받는 중 ${Math.floor(got / total * 100)}% (${mb(got)} / ${mb(total)})` : `받는 중 ${mb(got)}`);
+    });
+    setImgProgress("압축 푸는 중…");
+    let zip;
+    try{ zip = await JSZip.loadAsync(buf, { decodeFileName: decodeZipName }); }
+    catch(e){ throw new Error("이미지 파일이 압축 파일(ZIP)이 아닙니다"); }
+    const files = Object.values(zip.files).filter(f => {
+      if (f.dir || f.name.includes("__MACOSX")) return false;
+      const fname = f.name.replace(/\\/g, "/").split("/").pop();
+      if (!fname || fname.startsWith("._")) return false;
+      return IMAGE_EXTS.includes(fname.split(".").pop().toLowerCase());
+    });
+    if (!files.length) throw new Error("압축 파일 안에 이미지가 없습니다");
+    const entries = [];
+    let i = 0, fail = 0;
+    for (const f of files){
+      i++;
+      if (i % 5 === 1) setImgProgress(`이미지 정리 중 ${i}/${files.length}`);
+      const fname = f.name.replace(/\\/g, "/").split("/").pop();
+      const key = imageKey(fname.replace(/\.[^.]+$/, ""));
+      try{
+        const raw = await f.async("blob");
+        entries.push([key, await makeThumb(raw)]);
+      }catch(e){ fail++; console.warn("이미지 변환 실패:", fname, e); }
+    }
+    await idbReplaceAll(entries);
+    imgMeta = { modifiedTime: info.modifiedTime, count: entries.length, size: Number(info.size) || buf.byteLength, savedAt: Date.now() };
+    lsSet(LS.imgMeta, imgMeta);
+    imgPending = null;
+    setImgUrls(new Map(entries));
+    render();
+    toast(`이미지 ${entries.length}장 저장 완료` + (fail ? ` (${fail}장 실패)` : ""));
+  }catch(e){
+    console.warn(e);
+    toast(navigator.onLine ? "이미지 받기 실패" : "인터넷 연결을 확인하세요");
+    imgProgress = "실패: " + e.message;
+    imgBusy = false; updateImgInfo(); return;
+  }
+  imgBusy = false; imgProgress = ""; updateImgInfo();
+}
+
+// 데이터 확인할 때 같이 호출: 이미지가 바뀌었는지 확인
+async function checkImages(){
+  if (imgMode === "off" || imgBusy) return;
+  try{
+    const info = await getImageZipInfo();
+    const changed = !imgMeta || !imgMeta.count || imgMeta.modifiedTime !== info.modifiedTime;
+    if (!changed){ imgPending = null; updateImgInfo(); return; }
+    if (imgMode === "auto") await downloadImages(info);
+    else {
+      const first = !imgPending;
+      imgPending = info; updateImgInfo();
+      if (first && imgMeta && imgMeta.count) toast("새 제품 이미지가 있습니다 (⚙ 설정)");
+    }
+  }catch(e){ console.warn("이미지 확인 실패", e); }
+}
+
+function updateImgInfo(){
+  document.querySelectorAll("#segImg .b3d").forEach(b => b.classList.toggle("on", b.dataset.v === imgMode));
+  const info = $("imgInfo");
+  $("imgBtns").hidden = imgMode === "off";
+  $("btnImgGet").disabled = imgBusy;
+  $("btnImgDel").disabled = imgBusy || !(imgMeta && imgMeta.count);
+  info.classList.remove("new");
+  if (imgBusy || imgProgress){ info.textContent = imgProgress || "준비 중…"; return; }
+  let s = imgMeta && imgMeta.count ? `저장된 이미지 ${imgMeta.count}장 · ${hhmm(imgMeta.savedAt)} 받음` : "저장된 이미지 없음";
+  if (imgMode === "off") s += " · 표시 안 함";
+  if (imgPending && imgMode !== "off"){
+    s += ` · 새 이미지 있음${imgPending.size ? " (" + mb(Number(imgPending.size)) + ")" : ""}`;
+    info.classList.add("new");
+  }
+  info.textContent = s;
+}
+document.querySelectorAll("#segImg .b3d").forEach(b => b.onclick = () => {
+  imgMode = b.dataset.v; lsSetStr(LS.imgMode, imgMode);
+  updateImgInfo(); render();
+  if (imgMode !== "off") checkImages();
+});
+$("btnImgGet").onclick = () => downloadImages(imgPending);
+$("btnImgDel").onclick = async () => {
+  await idbClear(); setImgUrls(new Map());
+  imgMeta = null; lsDel(LS.imgMeta); imgPending = null;
+  updateImgInfo(); render(); toast("이미지를 삭제했습니다");
+};
+
+/* =========================================================
+   카드 / 결과 표시 (PC: ProductCard / run_search)
+   ========================================================= */
 function diffText(compareVal, mainVal){
   if (compareVal === 0 || mainVal === 0) return ["비교가격없음(0원)", "muted"];
   const d = compareVal - mainVal;
@@ -334,9 +586,15 @@ function cardHtml(it, mainItem){
   const rd = isCmp ? diffText(it.r, mainItem.r) : null;
   const link = productUrl(it);
   const ship = it.r !== 0 ? `택배포함 ${comma(it.r + SHIPPING_FEE)}원` : "";
+  const img = imgMode !== "off" ? imgUrls.get(imageKey(it.model)) : null;
   return `<div class="card${isCmp ? " c" : ""}">
-    <div class="model">${isCmp ? "<small>⚖ 비교</small>" : ""}${esc(it.model)}</div>
-    <div class="desc">${esc(it.desc)}</div>
+    <div class="chead">
+      ${img ? `<img class="thumb" src="${img}" alt="" loading="lazy" data-model="${esc(it.model)}">` : ""}
+      <div class="txt">
+        <div class="model">${isCmp ? "<small>⚖ 비교</small>" : ""}${esc(it.model)}</div>
+        <div class="desc">${esc(it.desc)}</div>
+      </div>
+    </div>
     <div class="prices">
       <div class="p"><div class="l">일반판매가</div><div class="v">${comma(it.n)} 원</div>${nd ? `<div class="d ${nd[1]}">${nd[0]}</div>` : ""}</div>
       <div class="p rw"><div class="l">보상판매가</div><div class="v">${comma(it.r)} 원</div>${rd ? `<div class="d ${rd[1]}">${rd[0]}</div>` : ""}</div>
@@ -353,7 +611,6 @@ function cardHtml(it, mainItem){
 }
 function emptyHtml(msg){ return `<div class="empty">${msg}</div>`; }
 
-/* ---------- 결과 표시 (PC: run_search / _iter_cards) ---------- */
 function render(){
   const out = $("out");
   if (!items.length){ out.innerHTML = emptyHtml("데이터가 없습니다<br>⟳ 새로고침을 눌러 주세요"); return; }
@@ -383,7 +640,16 @@ function render(){
   out.innerHTML = html.join("");
 }
 
-/* ---------- 상태 표시 ---------- */
+// 이미지 누르면 크게 보기
+$("out").addEventListener("click", e => {
+  const t = e.target.closest(".thumb"); if (!t) return;
+  $("viewImg").src = t.src; $("viewName").textContent = t.dataset.model; $("viewer").hidden = false;
+});
+$("viewer").onclick = () => { $("viewer").hidden = true; };
+
+/* =========================================================
+   데이터 동기화
+   ========================================================= */
 function setStatus(msg, err){ const s = $("status"); s.textContent = msg; s.classList.toggle("err", !!err); }
 function showMetaStatus(extra, err){
   if (!meta){ setStatus("데이터 없음", true); return; }
@@ -392,8 +658,6 @@ function showMetaStatus(extra, err){
   if (extra) m += " · " + extra;
   setStatus(m, err);
 }
-
-/* ---------- 데이터 적용 / 캐시 ---------- */
 function applyData(parsed, extraMeta){
   items = parsed.items; indexItems();
   meta = Object.assign({ dataDate: parsed.dataDate, syncedAt: Date.now() }, extraMeta);
@@ -408,18 +672,6 @@ function loadCache(){
   meta = c.meta || null;
   return true;
 }
-
-/* ---------- 구글 드라이브 동기화 ---------- */
-function getCfg(){
-  const c = lsGet(LS.cfg) || {};
-  return { fileId: c.fileId || DEFAULT_FILE_ID, apiKey: c.apiKey || DEFAULT_API_KEY, custom: !!(c.fileId || c.apiKey) };
-}
-function extractId(s){
-  s = String(s||"").trim();
-  const m = s.match(/\/d\/([a-zA-Z0-9_-]{15,})/) || s.match(/[?&]id=([a-zA-Z0-9_-]{15,})/);
-  if (m) return m[1];
-  return /^[a-zA-Z0-9_-]{15,}$/.test(s) ? s : "";
-}
 async function driveFetch(url){
   const r = await fetch(url, { cache:"no-store" });
   if (!r.ok){
@@ -431,23 +683,22 @@ async function driveFetch(url){
 }
 async function sync(force){
   if (syncing) return;
-  const cfg = getCfg();
   syncing = true; lastCheck = Date.now();
   $("btnSync").disabled = true;
-  const base = "https://www.googleapis.com/drive/v3/files/" + encodeURIComponent(cfg.fileId);
-  const key = "key=" + encodeURIComponent(cfg.apiKey);
+  const base = "https://www.googleapis.com/drive/v3/files/" + EXCEL_FILE_ID;
   try{
     if (!items.length) setStatus("데이터 받는 중…");
     // 1) 변경 여부만 먼저 확인 (가벼움)
-    const info = await (await driveFetch(`${base}?fields=modifiedTime&supportsAllDrives=true&${key}`)).json();
+    const info = await (await driveFetch(`${base}?fields=modifiedTime&supportsAllDrives=true&key=${API_KEY}`)).json();
     if (!force && meta && meta.source === "drive" && meta.modifiedTime === info.modifiedTime && items.length){
-      showMetaStatus("최신"); return;
+      showMetaStatus("최신");
+    } else {
+      // 2) 바뀌었으면 다운로드
+      setStatus("새 데이터 받는 중…");
+      const buf = await (await driveFetch(`${base}?alt=media&supportsAllDrives=true&key=${API_KEY}`)).arrayBuffer();
+      applyData(parseWorkbook(buf), { modifiedTime: info.modifiedTime, source:"drive" });
+      if (force) toast("최신 데이터로 갱신했습니다");
     }
-    // 2) 바뀌었으면 다운로드
-    setStatus("새 데이터 받는 중…");
-    const buf = await (await driveFetch(`${base}?alt=media&supportsAllDrives=true&${key}`)).arrayBuffer();
-    applyData(parseWorkbook(buf), { modifiedTime: info.modifiedTime, source:"drive" });
-    if (force) toast("최신 데이터로 갱신했습니다");
   }catch(e){
     console.warn(e);
     const offline = !navigator.onLine;
@@ -457,27 +708,21 @@ async function sync(force){
   }finally{
     syncing = false; $("btnSync").disabled = false;
   }
+  checkImages();
 }
 
-/* ---------- 설정 시트 ---------- */
+/* =========================================================
+   설정 시트
+   ========================================================= */
 function openSheet(){
-  const c = lsGet(LS.cfg) || {};
-  $("inId").value = c.fileId || ""; $("inId").placeholder = "기본값: " + DEFAULT_FILE_ID;
-  $("inKey").value = c.apiKey || ""; $("inKey").placeholder = "기본값 사용 중";
-  $("setInfo").textContent = `v${VERSION}` + (items.length ? ` · 데이터 ${comma(items.length)}개` : "");
+  updateImgInfo();
+  $("setInfo").textContent = `v${VERSION}` + (items.length ? ` · 상품 ${comma(items.length)}개` : "");
   $("mask").classList.add("show"); $("sheet").classList.add("show");
 }
 function closeSheet(){ $("mask").classList.remove("show"); $("sheet").classList.remove("show"); }
 $("btnSet").onclick = openSheet;
 $("btnClose").onclick = closeSheet;
 $("mask").onclick = closeSheet;
-$("btnSave").onclick = () => {
-  const rawId = $("inId").value.trim(), key = $("inKey").value.trim();
-  const id = rawId ? extractId(rawId) : "";
-  if (rawId && !id){ toast("드라이브 링크를 확인하세요"); return; }
-  lsSet(LS.cfg, { fileId:id, apiKey:key });
-  closeSheet(); sync(true);
-};
 $("btnFile").onclick = () => $("fileIn").click();
 $("fileIn").onchange = async (ev) => {
   const f = ev.target.files && ev.target.files[0]; ev.target.value = "";
@@ -486,10 +731,12 @@ $("fileIn").onchange = async (ev) => {
   catch(e){ toast(e.message); }
 };
 $("btnReset").onclick = () => {
-  lsDel(LS.data); lsDel("rps_data"); items = []; meta = null; render(); setStatus("캐시 삭제됨"); closeSheet(); sync(true);
+  lsDel(LS.data); items = []; meta = null; render(); setStatus("캐시 삭제됨"); closeSheet(); sync(true);
 };
 
-/* ---------- 모드/입력 이벤트 ---------- */
+/* =========================================================
+   검색 입력 이벤트
+   ========================================================= */
 function setMode(m){
   mode = m;
   $("tabAll").classList.toggle("on", m==="all");
@@ -505,7 +752,6 @@ $("btnSwap").onclick = () => {
   for (const id of ["qA","qB"]) $(id).parentElement.classList.toggle("has", !!$(id).value);
   render();
 };
-
 let renderTimer = null;
 function scheduleRender(ms){ clearTimeout(renderTimer); renderTimer = setTimeout(render, ms); }
 for (const id of ["qA","qB"]){
@@ -525,11 +771,17 @@ document.addEventListener("visibilitychange", () => {
 setInterval(() => { if (!document.hidden) sync(false); }, CHECK_INTERVAL_MS);
 window.addEventListener("online", () => sync(false));
 
-/* ---------- 시작 ---------- */
-lsDel("rps_data");   // v1.0.0 캐시 정리 (구조 변경)
+/* =========================================================
+   시작
+   ========================================================= */
+lsDel("rps_data"); lsDel("rps_cfg");   // 이전 버전 저장값 정리
 if (loadCache()) showMetaStatus();
 render();
-sync(false);
+updateImgInfo();
+(async () => {
+  if (imgMeta && imgMeta.count) { await loadImagesFromDb(); render(); }
+  sync(false);
+})();
 
 // 오프라인 실행용 서비스워커
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")){
