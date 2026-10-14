@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.15</title>
+<title>판매가 검색기 v1.0.16</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -162,6 +162,7 @@ main{padding:10px 14px 30px}
 .dlg .msg{font-size:14px;line-height:1.6;white-space:pre-line;overflow:auto}
 .dlg input{width:100%;font-size:16px;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--text);margin-top:10px;font-family:inherit}
 .dlg .acts{display:grid;grid-auto-flow:column;gap:8px;margin-top:14px}
+.dlg .acts.col{grid-auto-flow:row}
 .qlist{overflow:auto;margin-top:6px}
 .qitem{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
 .qitem .t{flex:1;min-width:0}
@@ -216,6 +217,7 @@ main{padding:10px 14px 30px}
 .st{font-size:12px;font-weight:800;border-radius:8px;padding:3px 8px;white-space:nowrap}
 .st.ok{background:#d3f9d8;color:#2b8a3e} .st.no{background:#ffe3e3;color:#c92a2a}
 .st.wait{background:#fff3bf;color:#a86b00} .st.boss{background:#d0ebff;color:#1864ab}
+.st.same{background:#ffe8cc;color:#d9480f}
 .urow .u2{display:flex;gap:6px;margin-top:8px;justify-content:flex-end}
 .urow .u2 .b3d{font-size:13px;padding:6px 12px}
 .lock.blocked .lic{filter:grayscale(1)}
@@ -374,7 +376,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.15";
+const VERSION = "1.0.16";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
@@ -1297,7 +1299,7 @@ function showDialog(o){
         <button class="b3d pri" data-l="load" data-i="${i}">불러오기</button><button class="b3d red" data-l="del" data-i="${i}">🗑</button></div>`).join("");
       lst.onclick = ev => { const b = ev.target.closest("[data-l]"); if (b) done({ btn: b.dataset.l, name: o.list[+b.dataset.i].name }); };
     }
-    acts.innerHTML = "";
+    acts.innerHTML = ""; acts.classList.toggle("col", !!o.stack);   // stack: 버튼을 세로로
     for (const [label, val, cls] of o.buttons || [["확인", null]]){
       const b = document.createElement("button"); b.className = "b3d" + (cls ? " " + cls : ""); b.textContent = label;
       b.onclick = () => done({ btn: val, value: inp.value });
@@ -1541,12 +1543,41 @@ function statusOf(v){
   if (isWaiting(s) || s === "") return ST_INFO["대기"];
   return isAllowed(s) ? ST_INFO["O"] : ST_INFO["X"];
 }
+// 같은 이름 확인 (띄어쓰기·대소문자 무시)
+function nameKey(n){ return String(n || "").replace(/\s+/g, "").toLowerCase(); }
+function sameNameOthers(id, name){
+  const k = nameKey(name); if (!k) return [];
+  return adminUsers.filter(x => x.id !== id && nameKey(x.name) === k);
+}
+// 허용 전에 같은 이름 기기가 있으면 물어봄 → null: 취소 / { remove: [삭제할 기존 기기] }
+async function askSameName(id, name){
+  const others = sameNameOthers(id, name);
+  if (!others.length) return { remove: [] };
+  const canReplace = !others.some(x => statusOf(x.status)[1] === "boss");   // 관리자 기기는 삭제 대상에서 제외
+  const lines = others.map(x => `· ${x.id} · ${statusOf(x.status)[0]}${x.time ? " · " + x.time : ""}`).join("\n");
+  const msg = `${String(name).trim()}\n${lines}\n\n새 기기: ${id}`
+    + (canReplace ? "\n\n폰을 바꿨다면 기존 기기를 삭제하세요.\n(기존 기기는 사용 중지·데이터 삭제)" : "");
+  const buttons = canReplace
+    ? [["기존 기기 삭제 후 허용", "replace", "pri"], ["둘 다 사용", "both"], ["취소", null]]
+    : [["취소", null], ["둘 다 사용", "both", "pri"]];
+  const r = await dialog({ title: "같은 이름의 기기가 있습니다", msg, buttons, stack: canReplace });
+  if (!r || !r.btn) return null;
+  return { remove: r.btn === "replace" ? others : [] };
+}
+async function removeDevices(list){
+  let n = 0;
+  for (const x of list){ if (await adminCall({ action: "delete", id: x.id })) n++; }
+  return n;
+}
 function renderAdminList(){
   const order = { wait: 0, ok: 1, boss: 2, no: 3 };
   const list = adminUsers.slice().sort((a, b) => order[statusOf(a.status)[1]] - order[statusOf(b.status)[1]]);
   if (!list.length){ $("admList").innerHTML = `<div class="cempty">등록된 사용자가 없습니다</div>`; return; }
+  const cnt = new Map();   // 같은 이름 기기 수 (띄어쓰기·대소문자 무시)
+  for (const u of list){ const k = nameKey(u.name); if (k) cnt.set(k, (cnt.get(k) || 0) + 1); }
   $("admList").innerHTML = list.map(u => {
     const [label, cls] = statusOf(u.status);
+    const same = cnt.get(nameKey(u.name)) || 0;
     const me = normId(u.id) === normId(DEVICE_ID);
     let btns = "";
     if (cls === "wait") btns = `<button class="b3d grn" data-a="O" data-id="${esc(u.id)}">허용</button><button class="b3d red" data-a="X" data-id="${esc(u.id)}">거절</button>`;
@@ -1554,7 +1585,7 @@ function renderAdminList(){
     else if (cls === "no") btns = `<button class="b3d grn" data-a="O" data-id="${esc(u.id)}">허용</button>`;
     if (cls !== "boss") btns += `<button class="b3d" data-a="del" data-id="${esc(u.id)}">삭제</button>`;
     return `<div class="urow">
-      <div class="u1"><div class="nm">${esc(u.name || "(이름 없음)")}${me ? " (이 폰)" : ""}</div><span class="st ${cls}">${label}</span></div>
+      <div class="u1"><div class="nm">${esc(u.name || "(이름 없음)")}${me ? " (이 폰)" : ""}</div>${same > 1 ? `<span class="st same">같은 이름 ${same}대</span>` : ""}<span class="st ${cls}">${label}</span></div>
       <div class="id">${esc(u.id)}${u.time ? " · " + esc(u.time) : ""}</div>
       ${btns ? `<div class="u2">${btns}</div>` : ""}
     </div>`;
@@ -1591,9 +1622,15 @@ $("admList").addEventListener("click", async ev => {
     const r = await dialog({ title: act === "X" ? "차단" : "삭제", msg, buttons: [["취소", null], [act === "X" ? "차단" : "삭제", "ok", "pri"]] });
     if (!r || r.btn !== "ok") return;
   }
+  let plan = null;
+  if (act === "O"){ plan = await askSameName(id, u.name); if (!plan) return; }
   b.disabled = true;
   const j = await adminCall(act === "del" ? { action: "delete", id } : { action: "set", id, status: act });
-  if (j){ toast(act === "O" ? "허용했습니다" : act === "X" ? "차단했습니다" : "삭제했습니다"); await loadAdminList(); }
+  if (j){
+    const n = plan && plan.remove.length ? await removeDevices(plan.remove) : 0;
+    toast(act === "O" ? (n ? `허용했습니다 (기존 기기 ${n}대 삭제)` : "허용했습니다") : act === "X" ? "차단했습니다" : "삭제했습니다");
+    await loadAdminList();
+  }
   else b.disabled = false;
 });
 $("btnAdmAdd").onclick = async () => {
@@ -1609,6 +1646,13 @@ $("btnAdmAdd").onclick = async () => {
   const r2 = await dialog({ title: "사용자 추가", msg: `${id}\n이름을 입력하세요`, input: { value: "" }, buttons: [["취소", null], ["허용으로 추가", "ok", "pri"]] });
   if (!r2 || r2.btn !== "ok") return;
   const name = String(r2.value || "").trim();
+  const cur = adminUsers.find(x => x.id === id);
+  const plan = await askSameName(id, name || (cur ? cur.name : ""));   // 같은 이름 기기 확인
+  if (!plan) return;
+  const finish = async msg => {
+    const n = plan.remove.length ? await removeDevices(plan.remove) : 0;
+    toast(n ? `${msg} (기존 기기 ${n}대 삭제)` : msg); await loadAdminList();
+  };
   let j = await adminCall({ action: "add", id, name }, null, true);
   if (j && j.exists){
     // 이미 명단에 있는 기기: 확인 후 허용으로 변경 (이름을 비웠으면 기존 이름 유지)
@@ -1618,10 +1662,10 @@ $("btnAdmAdd").onclick = async () => {
     const r3 = await dialog({ title: "이미 등록된 기기", msg: `${id}\n${u.name || "(이름 없음)"} · ${label}\n\n허용으로 바꿀까요?${name && name !== u.name ? `\n(이름: ${u.name || "없음"} → ${name})` : ""}`, buttons: [["취소", null], ["허용", "ok", "pri"]] });
     if (!r3 || r3.btn !== "ok") return;
     j = await adminCall({ action: "add", id, name, overwrite: true });
-    if (j){ toast("허용했습니다"); await loadAdminList(); }
+    if (j) await finish("허용했습니다");
     return;
   }
-  if (j){ toast("추가했습니다"); await loadAdminList(); }
+  if (j) await finish("추가했습니다");
 };
 
 // 잠금 화면 버튼
