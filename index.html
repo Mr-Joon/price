@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.12</title>
+<title>판매가 검색기 v1.0.13</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -201,6 +201,23 @@ main{padding:10px 14px 30px}
 .lock .lbtns{display:grid;grid-template-columns:2fr 1fr;gap:8px}
 .lock .lbtns .full{grid-column:1/-1}
 .lock .hint{font-size:12px;color:var(--sub);margin-top:14px}
+.lock .req{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:10px}
+.lock .req input{font-size:16px;padding:10px 12px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--text);font-family:inherit;min-width:0}
+.lock .done{color:var(--ok);font-weight:700;font-size:14px;margin-bottom:10px}
+.setBtn{position:relative}
+/* ===== 관리자: 사용자 관리 ===== */
+.adm{display:flex;flex-direction:column;max-height:88vh;min-height:80vh;z-index:52}
+.adm .tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.alist{flex:1;overflow:auto;margin:0 -16px;padding:0 16px;min-height:80px}
+.urow{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--bg)}
+.urow .u1{display:flex;align-items:center;gap:8px}
+.urow .nm{flex:1;font-weight:800;font-size:16px;word-break:break-all}
+.urow .id{font-size:13px;color:var(--sub);letter-spacing:.5px;margin-top:2px}
+.st{font-size:12px;font-weight:800;border-radius:8px;padding:3px 8px;white-space:nowrap}
+.st.ok{background:#d3f9d8;color:#2b8a3e} .st.no{background:#ffe3e3;color:#c92a2a}
+.st.wait{background:#fff3bf;color:#a86b00} .st.adm{background:#d0ebff;color:#1864ab}
+.urow .u2{display:flex;gap:6px;margin-top:8px;justify-content:flex-end}
+.urow .u2 .b3d{font-size:13px;padding:6px 12px}
 .lock.blocked .lic{filter:grayscale(1)}
 .lock.blocked h2{color:var(--warn)}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 60px);transform:translateX(-50%);
@@ -220,7 +237,7 @@ main{padding:10px 14px 30px}
     </div>
     <button class="b3d icon cartBtn" id="btnCart" title="견적함">🛒<span class="badge" id="cartBadge" hidden>0</span></button>
     <button class="b3d icon" id="btnSync" title="데이터 받기" aria-label="데이터 받기"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18.5H6.5a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 17.6 8.1 4.75 4.75 0 0 1 17.5 18.5H17"/><path d="M12 11v9"/><path d="m8.5 16.5 3.5 3.5 3.5-3.5"/></svg></button>
-    <button class="b3d icon" id="btnSet" title="설정">⚙</button>
+    <button class="b3d icon setBtn" id="btnSet" title="설정">⚙<span class="badge" id="setBadge" hidden>0</span></button>
   </div>
   <div class="status" id="status">데이터 준비 중…</div>
   <div class="tabs">
@@ -287,9 +304,23 @@ main{padding:10px 14px 30px}
     <div class="hint" id="fileHint" hidden>폰 파일을 사용하는 동안에는 자동 갱신이 멈춥니다</div>
   </div>
 
+  <div class="sec" id="admSec" hidden>
+    <div class="lab">관리자</div>
+    <button class="b3d pri" id="btnAdmin" style="width:100%">사용자 관리</button>
+  </div>
+
   <button class="b3d pri full" id="btnClose">닫기</button>
   <input type="file" id="fileIn" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
   <div class="hint" id="setInfo" style="text-align:center"></div>
+</div>
+<!-- 관리자: 사용자 관리 -->
+<div class="sheet adm" id="adminSheet">
+  <div class="chd" style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><h3 style="flex:1;margin:0">사용자 관리</h3><button class="b3d icon" id="btnAdmClose" style="width:36px;height:36px;font-size:16px">✕</button></div>
+  <div class="tools">
+    <button class="b3d grn" id="btnAdmAdd">＋ 추가</button>
+    <button class="b3d" id="btnAdmRefresh">새로고침</button>
+  </div>
+  <div class="alist" id="admList"></div>
 </div>
 <!-- 견적함 -->
 <div class="sheet cart" id="cartSheet">
@@ -317,8 +348,13 @@ main{padding:10px 14px 30px}
     <h2 id="lockTitle">승인이 필요합니다</h2>
     <p id="lockMsg">관리자에게 아래 기기번호를 보내<br>사용 승인을 받으세요.</p>
     <div class="devid" id="lockId">----</div>
+    <div class="req" id="reqBox" hidden>
+      <input id="reqName" maxlength="20" placeholder="이름 (예: 김OO)" autocomplete="off">
+      <button class="b3d grn" id="btnRequest">승인 요청</button>
+    </div>
+    <div class="done" id="reqDone" hidden>✔ 승인 요청을 보냈습니다. 관리자가 허용하면 자동으로 열립니다.</div>
     <div class="lbtns">
-      <button class="b3d grn" id="btnSendId">기기번호 보내기</button>
+      <button class="b3d" id="btnSendId">기기번호 보내기</button>
       <button class="b3d" id="btnCopyId">복사</button>
       <button class="b3d pri full" id="btnRecheck">다시 확인</button>
       <button class="b3d grn full" id="btnLockUpd" hidden>새 버전 업데이트</button>
@@ -338,13 +374,14 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.12";
+const VERSION = "1.0.13";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
 const IMAGE_ZIP_ID  = "1sfNfJwTvrK8yAlYOOoB__tNHf21VbvG8";        // 제품 이미지 zip
 const API_KEY       = "AIzaSyAMB2G_RWePWk0q0jddOmxscXNMeC3EuxM";  // mr-joon.github.io 전용 키
 const USER_SHEET_ID = "1_OMhj2bGozo0Q8UGMpFAVLvf5-F3WHrTRM1xGJOYdJA"; // 사용자 명단 구글 시트 (기기번호 | 이름 | 허용)
+const ADMIN_API_URL = "https://script.google.com/macros/s/AKfycbyJSK7whlOX---slUvYsfY-OEQYHkX0GbYp_gWNHskmTE_GQJwhY1cJaifXIkFB8oSb/exec";   // 사용자 관리 Apps Script 웹 앱 주소 (승인 요청·관리자 메뉴)
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;   // 5분마다 변경 확인
 const DISPLAY_LIMIT = 100;                  // 검색 결과 표시 개수 상한 (PC와 동일)
@@ -925,11 +962,12 @@ async function sync(force, skipImg){
 /* =========================================================
    뒤로가기 처리: 열린 창을 기록해 두고 뒤로가기 시 위에서부터 닫음
    ========================================================= */
-const layers = [];   // 열린 순서: "sheet" | "cart" | "viewer"
+const layers = [];   // 열린 순서: "sheet" | "cart" | "admin" | "viewer"
+const LAYER_EL = { sheet: "sheet", cart: "cartSheet", admin: "adminSheet" };
 function hideLayer(name){
   if (name === "viewer") $("viewer").hidden = true;
-  else $(name === "cart" ? "cartSheet" : "sheet").classList.remove("show");
-  if (!$("sheet").classList.contains("show") && !$("cartSheet").classList.contains("show")) $("mask").classList.remove("show");
+  else $(LAYER_EL[name] || "sheet").classList.remove("show");
+  if (!Object.values(LAYER_EL).some(id => $(id).classList.contains("show"))) $("mask").classList.remove("show");
 }
 function pushLayer(name){
   layers.push(name);
@@ -980,10 +1018,10 @@ function openSheet(){
   $("mask").classList.add("show"); $("sheet").classList.add("show");
   pushLayer("sheet");
 }
-function closeSheet(){   // 설정/견적함 모두 닫기
-  const n = layers.filter(x => x === "sheet" || x === "cart").length ? layers.length : 0;
+function closeSheet(){   // 설정/견적함/관리자 창 모두 닫기
+  const n = layers.filter(x => x in LAYER_EL).length ? layers.length : 0;
   if (n) closeLayers(n);
-  else { $("sheet").classList.remove("show"); $("cartSheet").classList.remove("show"); $("mask").classList.remove("show"); }
+  else { Object.values(LAYER_EL).forEach(id => $(id).classList.remove("show")); $("mask").classList.remove("show"); }
 }
 $("btnSet").onclick = openSheet;
 $("btnClose").onclick = closeSheet;
@@ -1295,7 +1333,9 @@ let authState = lsGet(LS_AUTH) || { status: "pending" };   // ok | pending | blo
 let authChecking = null;
 
 function normId(v){ return String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
-function isAllowed(v){ return /^(o|ㅇ|y|yes|예|허용|승인)$/i.test(String(v || "").trim()); }
+function isAllowed(v){ return /^(o|ㅇ|y|yes|예|허용|승인|관리자)$/i.test(String(v || "").trim()); }
+function isWaiting(v){ return String(v || "").trim() === "대기"; }
+function isAdminVal(v){ return String(v || "").trim() === "관리자"; }
 // CSV 읽기 (따옴표·쉼표·줄바꿈 처리)
 function parseCsv(t){
   const rows = []; let row = [], cur = "", q = false;
@@ -1351,12 +1391,27 @@ function showLock(status, info){
     : "관리자에게 아래 기기번호를 보내<br>사용 승인을 받으세요.";
   $("lockId").textContent = DEVICE_ID;
   $("lockInfo").textContent = info || (authState.checkedAt ? `마지막 확인 ${whenText(authState.checkedAt)}` : "");
+  const canRequest = !blocked && !!ADMIN_API_URL && !ADMIN_API_URL.startsWith("__");
+  $("reqBox").hidden = !canRequest || !!authState.requested;
+  $("reqDone").hidden = !canRequest || !authState.requested;
+  if (canRequest && authState.name && !$("reqName").value) $("reqName").value = authState.name;
+  if (!blocked && authState.requested) startLockPolling(); else stopLockPolling();
   if ($("lock").hidden){
     closeSheet(); $("viewer").hidden = true;
     $("lock").hidden = false;
   }
 }
-function hideLock(){ $("lock").hidden = true; }
+function hideLock(){ $("lock").hidden = true; stopLockPolling(); }
+// 승인 요청을 보낸 뒤에는 잠금 화면에서 30초마다 확인 (허용되면 바로 열림)
+let lockPoll = null;
+function startLockPolling(){
+  if (lockPoll) return;
+  lockPoll = setInterval(async () => {
+    if (document.hidden || $("lock").hidden) return;
+    if (await checkAuth()) sync(true);
+  }, 30000);
+}
+function stopLockPolling(){ if (lockPoll){ clearInterval(lockPoll); lockPoll = null; } }
 
 // 명단 확인 → 사용 가능하면 true
 function checkAuth(){
@@ -1377,17 +1432,168 @@ async function doCheckAuth(){
   const row = rows.find(r => normId(r[0]) === me);
   const prev = authState.status;
   if (row && isAllowed(row[2])){
-    setAuth("ok", { name: String(row[1] || "").trim() });
+    const role = isAdminVal(row[2]) ? "admin" : "user";
+    setAuth("ok", { name: String(row[1] || "").trim(), role, requested: false });
+    if (role === "admin") updateAdminBadge(rows); else updateAdminBadge(null);
     if (prev !== "ok"){ hideLock(); toast("사용이 승인되었습니다"); }
     return true;
   }
-  // 허용이 아님: 예전에 승인됐었거나 X로 등록돼 있으면 '차단', 아직 등록 전이면 '승인 대기'
-  const status = (prev === "ok" || prev === "blocked" || row) ? "blocked" : "pending";
+  // 허용이 아님: 예전에 승인됐었거나 X로 등록돼 있으면 '차단', 아직 등록 전(또는 '대기')이면 '승인 대기'
+  const waiting = !!row && isWaiting(row[2]);
+  const status = (prev === "ok" || prev === "blocked" || (row && !waiting)) ? "blocked" : "pending";
   if (status === "blocked") await wipeAllData();
-  setAuth(status);
+  setAuth(status, { role: "user", requested: waiting });
+  updateAdminBadge(null);
   showLock(status);
   return false;
 }
+
+
+/* =========================================================
+   승인 요청 / 관리자 메뉴 (구글 Apps Script를 통해 명단 시트를 수정)
+   - 직원: 잠금 화면에서 이름 입력 → [승인 요청] → 시트에 "대기"로 추가
+   - 관리자(시트 허용 칸 = "관리자"인 기기): ⚙ → [사용자 관리] → 비밀번호 6자리
+   ========================================================= */
+let adminPin = null;          // 이번 실행 동안만 기억 (저장하지 않음)
+let adminUsers = [];
+async function adminApi(body){
+  if (!ADMIN_API_URL || ADMIN_API_URL.startsWith("__")) throw new Error("관리자 기능 주소가 설정되지 않았습니다");
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 20000);
+  try{
+    const r = await fetch(ADMIN_API_URL, { method: "POST", body: JSON.stringify(Object.assign({ deviceId: DEVICE_ID }, body)), signal: ctl.signal });
+    const j = await r.json();
+    if (!j.ok){ const err = new Error(j.error || "요청 실패"); err.badPin = !!j.badPin; throw err; }
+    return j;
+  }catch(e){
+    if (e && e.name === "AbortError") throw timeoutErr();
+    if (e instanceof TypeError) throw new Error(navigator.onLine ? "관리 서버에 연결하지 못했습니다" : "인터넷 연결을 확인하세요");
+    throw e;
+  }finally{ clearTimeout(t); }
+}
+
+// 직원: 승인 요청
+$("btnRequest").onclick = async () => {
+  const name = $("reqName").value.trim();
+  if (!name){ toast("이름을 입력하세요"); $("reqName").focus(); return; }
+  const b = $("btnRequest"); b.disabled = true; b.textContent = "보내는 중…";
+  try{
+    const j = await adminApi({ action: "request", name });
+    setAuth(authState.status, { requested: j.status === "대기", name });
+    if (j.status === "대기") toast("승인 요청을 보냈습니다");
+    if (await checkAuth()) sync(true); else showLock(authState.status);
+  }catch(e){ toast(e.message); }
+  finally{ b.disabled = false; b.textContent = "승인 요청"; }
+};
+$("reqName").addEventListener("keydown", e => { if (e.key === "Enter") $("btnRequest").click(); });
+
+// 관리자: 대기 중인 요청 수를 ⚙ 버튼과 [사용자 관리]에 표시
+function updateAdminBadge(rows){
+  const isAdmin = authState.status === "ok" && authState.role === "admin";
+  $("admSec").hidden = !isAdmin;
+  const n = isAdmin && rows ? rows.filter(r => normId(r[0]) && isWaiting(r[2])).length : 0;
+  $("setBadge").hidden = !n; $("setBadge").textContent = n;
+  $("btnAdmin").textContent = n ? `사용자 관리 (대기 ${n})` : "사용자 관리";
+}
+
+async function askPin(){
+  if (adminPin) return adminPin;
+  const r = await dialog({ title: "관리자 비밀번호", msg: "6자리 숫자를 입력하세요", input: { value: "", numeric: true }, buttons: [["취소", null], ["확인", "ok", "pri"]] });
+  if (!r || r.btn !== "ok") return null;
+  const v = String(r.value || "").trim();
+  if (!/^\d{6}$/.test(v)){ toast("6자리 숫자를 입력하세요"); return null; }
+  return v;
+}
+// 비밀번호가 필요한 관리자 요청 (틀리면 다시 묻기)
+async function adminCall(body){
+  for (let tries = 0; tries < 3; tries++){
+    const pin = await askPin();
+    if (!pin) return null;
+    try{
+      const j = await adminApi(Object.assign({ pin }, body));
+      adminPin = pin;
+      return j;
+    }catch(e){
+      if (e.badPin){ adminPin = null; toast(e.message); continue; }
+      toast(e.message); return null;
+    }
+  }
+  return null;
+}
+
+const ST_INFO = { "O": ["허용","ok"], "X": ["차단","no"], "대기": ["대기","wait"], "관리자": ["관리자","adm"] };
+function statusOf(v){
+  const s = String(v || "").trim();
+  if (isAdminVal(s)) return ST_INFO["관리자"];
+  if (isWaiting(s) || s === "") return ST_INFO["대기"];
+  return isAllowed(s) ? ST_INFO["O"] : ST_INFO["X"];
+}
+function renderAdminList(){
+  const order = { wait: 0, ok: 1, adm: 2, no: 3 };
+  const list = adminUsers.slice().sort((a, b) => order[statusOf(a.status)[1]] - order[statusOf(b.status)[1]]);
+  if (!list.length){ $("admList").innerHTML = `<div class="cempty">등록된 사용자가 없습니다</div>`; return; }
+  $("admList").innerHTML = list.map(u => {
+    const [label, cls] = statusOf(u.status);
+    const me = normId(u.id) === normId(DEVICE_ID);
+    let btns = "";
+    if (cls === "wait") btns = `<button class="b3d grn" data-a="O" data-id="${esc(u.id)}">허용</button><button class="b3d red" data-a="X" data-id="${esc(u.id)}">거절</button>`;
+    else if (cls === "ok") btns = `<button class="b3d red" data-a="X" data-id="${esc(u.id)}">차단</button>`;
+    else if (cls === "no") btns = `<button class="b3d grn" data-a="O" data-id="${esc(u.id)}">허용</button>`;
+    if (cls !== "adm") btns += `<button class="b3d" data-a="del" data-id="${esc(u.id)}">삭제</button>`;
+    return `<div class="urow">
+      <div class="u1"><div class="nm">${esc(u.name || "(이름 없음)")}${me ? " (이 폰)" : ""}</div><span class="st ${cls}">${label}</span></div>
+      <div class="id">${esc(u.id)}${u.time ? " · " + esc(u.time) : ""}</div>
+      ${btns ? `<div class="u2">${btns}</div>` : ""}
+    </div>`;
+  }).join("");
+}
+async function loadAdminList(){
+  $("admList").innerHTML = `<div class="cempty">불러오는 중…</div>`;
+  const j = await adminCall({ action: "list" });
+  if (!j){ $("admList").innerHTML = `<div class="cempty">불러오지 못했습니다</div>`; return false; }
+  adminUsers = j.users || [];
+  renderAdminList();
+  updateAdminBadge(adminUsers.map(u => [u.id, u.name, u.status]));
+  return true;
+}
+async function openAdmin(){
+  if (!(authState.status === "ok" && authState.role === "admin")) return;
+  const pin = await askPin();          // 창을 열기 전에 비밀번호부터 확인
+  if (!pin) return;
+  adminPin = adminPin || pin;
+  $("mask").classList.add("show"); $("adminSheet").classList.add("show");
+  pushLayer("admin");
+  if (!(await loadAdminList()) && !adminPin) closeLayers(1);
+}
+$("btnAdmin").onclick = openAdmin;
+$("btnAdmClose").onclick = () => closeLayers(1);
+$("btnAdmRefresh").onclick = loadAdminList;
+$("admList").addEventListener("click", async ev => {
+  const b = ev.target.closest("[data-a]"); if (!b) return;
+  const id = b.dataset.id, act = b.dataset.a;
+  const u = adminUsers.find(x => x.id === id) || { name: "" };
+  const who = `${u.name || "(이름 없음)"} (${id})`;
+  if (act === "X" || act === "del"){
+    const msg = act === "X" ? `${who}\n\n차단하면 그 폰의 가격표·이미지·견적이 삭제됩니다.\n차단할까요?`
+                            : `${who}\n\n명단에서 삭제할까요?\n(삭제해도 차단과 같이 그 폰의 데이터가 삭제됩니다)`;
+    const r = await dialog({ title: act === "X" ? "차단" : "삭제", msg, buttons: [["취소", null], [act === "X" ? "차단" : "삭제", "ok", "pri"]] });
+    if (!r || r.btn !== "ok") return;
+  }
+  b.disabled = true;
+  const j = await adminCall(act === "del" ? { action: "delete", id } : { action: "set", id, status: act });
+  if (j){ toast(act === "O" ? "허용했습니다" : act === "X" ? "차단했습니다" : "삭제했습니다"); await loadAdminList(); }
+  else b.disabled = false;
+});
+$("btnAdmAdd").onclick = async () => {
+  const r1 = await dialog({ title: "사용자 추가", msg: "기기번호를 입력하세요 (예: K7P2-9XMQ)", input: { value: "" }, buttons: [["취소", null], ["다음", "ok", "pri"]] });
+  if (!r1 || r1.btn !== "ok") return;
+  const raw = normId(r1.value);
+  if (raw.length !== 8){ toast("기기번호는 영문·숫자 8자리입니다"); return; }
+  const id = raw.slice(0, 4) + "-" + raw.slice(4);
+  const r2 = await dialog({ title: "사용자 추가", msg: `${id}\n이름을 입력하세요`, input: { value: "" }, buttons: [["취소", null], ["허용으로 추가", "ok", "pri"]] });
+  if (!r2 || r2.btn !== "ok") return;
+  const j = await adminCall({ action: "set", id, status: "O", name: r2.value.trim() });
+  if (j){ toast("추가했습니다"); await loadAdminList(); }
+};
 
 // 잠금 화면 버튼
 $("btnSendId").onclick = async () => {
@@ -1506,6 +1712,7 @@ try{ navigator.connection && navigator.connection.addEventListener("change", () 
    ========================================================= */
 lsDel("rps_data"); lsDel("rps_cfg");   // 이전 버전 저장값 정리
 if (authState.status !== "ok") showLock(authState.status);   // 승인 전이면 처음부터 잠금 화면
+updateAdminBadge(null);
 if (loadCache()) showMetaStatus();
 restoreSearch();
 render();
