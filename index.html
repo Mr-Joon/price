@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.11</title>
+<title>판매가 검색기 v1.0.12</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -190,6 +190,19 @@ main{padding:10px 14px 30px}
 .sheet .hint.new{color:var(--reward);font-weight:700}
 .sheet .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .sheet .full{width:100%;margin-top:18px}
+/* ===== 잠금 화면 (승인 필요 / 사용 중지) ===== */
+.lock{position:fixed;inset:0;z-index:75;background:var(--bg);display:grid;place-items:center;padding:24px;overflow:auto}
+.lock .lbox{width:100%;max-width:360px;text-align:center}
+.lock .lic{font-size:44px;margin-bottom:6px}
+.lock h2{margin:0 0 8px;font-size:21px}
+.lock p{margin:0 0 14px;color:var(--sub);font-size:14px;line-height:1.6}
+.lock .devid{font-size:30px;font-weight:800;letter-spacing:2px;background:var(--card);border:2px dashed var(--brand);
+  border-radius:14px;padding:14px 8px;margin:6px 0 16px;color:var(--brand);user-select:all}
+.lock .lbtns{display:grid;grid-template-columns:2fr 1fr;gap:8px}
+.lock .lbtns .full{grid-column:1/-1}
+.lock .hint{font-size:12px;color:var(--sub);margin-top:14px}
+.lock.blocked .lic{filter:grayscale(1)}
+.lock.blocked h2{color:var(--warn)}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 60px);transform:translateX(-50%);
   background:#222b3a;color:#fff;font-size:14px;padding:10px 16px;border-radius:20px;z-index:80;
   opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
@@ -298,6 +311,21 @@ main{padding:10px 14px 30px}
 </div>
 <div class="dlg" id="dlg" hidden><div class="box"><h4 id="dlgTitle"></h4><div class="msg" id="dlgMsg"></div><input id="dlgInput" hidden><div class="qlist" id="dlgList" hidden></div><div class="acts" id="dlgActs"></div></div></div>
 <div class="viewer" id="viewer" hidden><div><img id="viewImg" alt=""><div id="viewName"></div></div></div>
+<div class="lock" id="lock" hidden>
+  <div class="lbox">
+    <div class="lic">🔒</div>
+    <h2 id="lockTitle">승인이 필요합니다</h2>
+    <p id="lockMsg">관리자에게 아래 기기번호를 보내<br>사용 승인을 받으세요.</p>
+    <div class="devid" id="lockId">----</div>
+    <div class="lbtns">
+      <button class="b3d grn" id="btnSendId">기기번호 보내기</button>
+      <button class="b3d" id="btnCopyId">복사</button>
+      <button class="b3d pri full" id="btnRecheck">다시 확인</button>
+      <button class="b3d grn full" id="btnLockUpd" hidden>새 버전 업데이트</button>
+    </div>
+    <div class="hint" id="lockInfo"></div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script src="xlsx.full.min.js"></script>
@@ -310,12 +338,13 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.11";
+const VERSION = "1.0.12";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
 const IMAGE_ZIP_ID  = "1sfNfJwTvrK8yAlYOOoB__tNHf21VbvG8";        // 제품 이미지 zip
 const API_KEY       = "AIzaSyAMB2G_RWePWk0q0jddOmxscXNMeC3EuxM";  // mr-joon.github.io 전용 키
+const USER_SHEET_ID = "1_OMhj2bGozo0Q8UGMpFAVLvf5-F3WHrTRM1xGJOYdJA"; // 사용자 명단 구글 시트 (기기번호 | 이름 | 허용)
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;   // 5분마다 변경 확인
 const DISPLAY_LIMIT = 100;                  // 검색 결과 표시 개수 상한 (PC와 동일)
@@ -781,22 +810,33 @@ $("viewer").onclick = () => { if (layers[layers.length - 1] === "viewer") closeL
    데이터 동기화
    ========================================================= */
 function setStatus(msg, err){ const s = $("status"); s.textContent = msg; s.classList.toggle("err", !!err); }
-function showMetaStatus(extra, err){
-  if (!meta){ setStatus("데이터 없음", true); return; }
-  let m = `${meta.dataDate ? meta.dataDate + " 기준 · " : ""}${comma(items.length)}개 · ${hhmm(meta.syncedAt)} 갱신`;
-  if (meta.source === "file") m += " (폰 파일 · 자동 갱신 멈춤)";
-  if (extra) m += " · " + extra;
-  setStatus(m, err);
+// 시간 표시: 오늘이면 "20:41", 다른 날이면 "10/13 20:41"
+function whenText(ts){
+  const d = new Date(ts), now = new Date(), z = n => String(n).padStart(2,"0");
+  const t = `${z(d.getHours())}:${z(d.getMinutes())}`;
+  return d.toDateString() === now.toDateString() ? t : `${d.getMonth()+1}/${d.getDate()} ${t}`;
 }
+// 상태줄: "2026.09.09 기준 · 275개 · 확인 20:41 최신"
+// mode: (없음)=보통 / "warn"=빨간 글씨(확인은 됨) / "fail"=확인 실패
+function showMetaStatus(extra, mode){
+  if (!meta){ setStatus("데이터 없음", true); return; }
+  let m = `${meta.dataDate ? meta.dataDate + " 기준 · " : ""}${comma(items.length)}개`;
+  if (meta.source === "file") m += " · 폰 파일 (자동 갱신 멈춤)";
+  else if (mode === "fail") m += ` · ${extra || "확인 실패"}` + (meta.checkedAt ? ` (마지막 확인 ${whenText(meta.checkedAt)})` : "");
+  else m += ` · 확인 ${whenText(meta.checkedAt || meta.syncedAt)}` + (extra ? " " + extra : "");
+  setStatus(m, mode === "warn" || mode === "fail");
+}
+function markChecked(){ if (meta){ meta.checkedAt = Date.now(); saveDataCache(); } }
 function saveDataCache(){
   const slim = items.map(({key, ...rest}) => rest);
   lsSet(LS.data, { items: slim, meta });
 }
 function applyData(parsed, extraMeta){
   items = parsed.items; indexItems();
-  meta = Object.assign({ dataDate: parsed.dataDate, syncedAt: Date.now() }, extraMeta);
+  const now = Date.now();
+  meta = Object.assign({ dataDate: parsed.dataDate, syncedAt: now, checkedAt: now }, extraMeta);
   saveDataCache();
-  render(); showMetaStatus(); updateDataBtns();
+  render(); showMetaStatus(meta.source === "drive" ? "새 가격표 적용" : ""); updateDataBtns();
   refreshCartPrices();
 }
 // 새 가격표 제품 수가 이전의 절반 미만이면 적용 전에 확인 (PC v6.3.21과 동일한 안전장치)
@@ -837,6 +877,8 @@ const driveJson   = url => driveRequest(url, r => r.json(), 15000);          // 
 const driveBuffer = url => driveRequest(url, r => r.arrayBuffer(), 30000);   // 가격표 엑셀 (30초)
 async function sync(force, skipImg){
   if (syncing) return;
+  if (!(await checkAuth())){ checkAppUpdate(); return; }   // 승인되지 않은 기기는 가격표를 받지 않음
+  if (syncing) return;
   if (!force && meta && meta.source === "file" && items.length){   // 폰 파일을 연 동안은 드라이브 가격표로 덮어쓰지 않음
     lastCheck = Date.now(); showMetaStatus();
     if (!skipImg) checkImages();
@@ -851,9 +893,9 @@ async function sync(force, skipImg){
     // 1) 변경 여부만 먼저 확인 (가벼움)
     const info = await driveJson(`${base}?fields=modifiedTime&supportsAllDrives=true&key=${API_KEY}`);
     if (!force && meta && meta.source === "drive" && meta.modifiedTime === info.modifiedTime && items.length){
-      showMetaStatus("최신");
+      markChecked(); showMetaStatus("최신");
     } else if (!force && meta && meta.rejectedTime === info.modifiedTime && items.length){
-      showMetaStatus("새 가격표 보류됨 (☁로 다시 받기)", true);   // 적용 안 함을 고른 가격표는 다시 묻지 않음
+      markChecked(); showMetaStatus("· 새 가격표 보류됨 (☁로 다시 받기)", "warn");   // 적용 안 함을 고른 가격표는 다시 묻지 않음
     } else {
       // 2) 바뀌었으면 다운로드
       setStatus("새 데이터 받는 중…");
@@ -862,15 +904,15 @@ async function sync(force, skipImg){
         applyData(parsed, { modifiedTime: info.modifiedTime, source:"drive" });
         if (force) toast("최신 데이터로 갱신했습니다");
       } else {
-        meta = Object.assign({}, meta, { rejectedTime: info.modifiedTime });
+        meta = Object.assign({}, meta, { rejectedTime: info.modifiedTime, checkedAt: Date.now() });
         saveDataCache();
-        showMetaStatus("새 가격표 보류됨 (☁로 다시 받기)", true);
+        showMetaStatus("· 새 가격표 보류됨 (☁로 다시 받기)", "warn");
       }
     }
   }catch(e){
     console.warn(e);
     const offline = !navigator.onLine;
-    if (items.length) showMetaStatus(offline ? "오프라인" : "갱신 실패", true);
+    if (items.length) showMetaStatus(offline ? "확인 실패 (오프라인)" : "확인 실패", "fail");
     else setStatus((offline ? "오프라인: " : "") + e.message, true);
     if (force) toast(offline ? "인터넷 연결을 확인하세요" : "갱신 실패");
   }finally{
@@ -932,7 +974,8 @@ function historyBackQuiet(){
    ========================================================= */
 function openSheet(){
   updateImgInfo(); updateDataBtns();
-  $("setInfo").textContent = `v${VERSION}` + (items.length ? ` · 상품 ${comma(items.length)}개` : "");
+  $("setInfo").textContent = `v${VERSION}` + (items.length ? ` · 상품 ${comma(items.length)}개` : "")
+    + (meta && meta.syncedAt ? ` · 가격표 받은 시간 ${hhmm(meta.syncedAt)}` : "") + ` · 기기번호 ${DEVICE_ID}`;
   if ($("sheet").classList.contains("show")) return;
   $("mask").classList.add("show"); $("sheet").classList.add("show");
   pushLayer("sheet");
@@ -1230,6 +1273,140 @@ function showDialog(o){
   });
 }
 
+
+/* =========================================================
+   사용 승인: 구글 시트 명단(기기번호 | 이름 | 허용)에 "O"로 등록된 기기만 사용
+   - 확인: 앱을 열 때, 5분마다, 앱으로 돌아올 때, ☁ 누를 때
+   - X로 바뀌거나 명단에서 빠지면 → 가격표·이미지·견적함·저장 견적 삭제 후 잠금
+   - 명단을 확인하지 못하면(인터넷 끊김 등) 직전 상태 유지
+   ========================================================= */
+const LS_DEVICE = "rps_device", LS_AUTH = "rps_auth";
+function makeDeviceId(){
+  const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   // 헷갈리는 0/O, 1/I 제외
+  const b = new Uint8Array(8);
+  try{ crypto.getRandomValues(b); }catch(e){ for (let i = 0; i < 8; i++) b[i] = Math.floor(Math.random() * 256); }
+  let s = "";
+  for (let i = 0; i < 8; i++){ s += A[b[i] % A.length]; if (i === 3) s += "-"; }
+  return s;
+}
+let DEVICE_ID = lsGetStr(LS_DEVICE, "");
+if (!/^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(DEVICE_ID)){ DEVICE_ID = makeDeviceId(); lsSetStr(LS_DEVICE, DEVICE_ID); }
+let authState = lsGet(LS_AUTH) || { status: "pending" };   // ok | pending | blocked
+let authChecking = null;
+
+function normId(v){ return String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
+function isAllowed(v){ return /^(o|ㅇ|y|yes|예|허용|승인)$/i.test(String(v || "").trim()); }
+// CSV 읽기 (따옴표·쉼표·줄바꿈 처리)
+function parseCsv(t){
+  const rows = []; let row = [], cur = "", q = false;
+  for (let i = 0; i < t.length; i++){
+    const c = t[i];
+    if (q){
+      if (c === '"'){ if (t[i+1] === '"'){ cur += '"'; i++; } else q = false; }
+      else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === ","){ row.push(cur); cur = ""; }
+    else if (c === "\n" || c === "\r"){ if (c === "\r" && t[i+1] === "\n") i++; row.push(cur); rows.push(row); row = []; cur = ""; }
+    else cur += c;
+  }
+  if (cur !== "" || row.length){ row.push(cur); rows.push(row); }
+  return rows;
+}
+async function fetchUserList(){
+  const url = `https://www.googleapis.com/drive/v3/files/${USER_SHEET_ID}/export?mimeType=text%2Fcsv&key=${API_KEY}`;
+  try{
+    return parseCsv(await driveRequest(url, r => r.text(), 15000));
+  }catch(e){
+    // 예비 경로: 구글 시트 자체 CSV 주소 (드라이브 API가 막혔을 때)
+    if (!navigator.onLine) throw e;
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 15000);
+    try{
+      const r = await fetch(`https://docs.google.com/spreadsheets/d/${USER_SHEET_ID}/gviz/tq?tqx=out:csv`, { cache: "no-store", signal: ctl.signal });
+      if (!r.ok) throw e;
+      return parseCsv(await r.text());
+    }finally{ clearTimeout(t); }
+  }
+}
+function setAuth(status, extra){
+  authState = Object.assign({}, authState, { status, checkedAt: Date.now() }, extra || {});
+  lsSet(LS_AUTH, authState);
+}
+// 차단 시: 이 폰에 저장된 가격 관련 데이터 모두 삭제
+async function wipeAllData(){
+  lsDel(LS.data); lsDel(LS.imgMeta); lsDel(LS_CART); lsDel(LS_QUOTES);
+  try{ sessionStorage.removeItem(SS_SEARCH); }catch(e){}
+  try{ await idbClear(); }catch(e){}
+  setImgUrls(new Map()); imgMeta = null; imgPending = null;
+  items = []; meta = null; indexItems();
+  cart = { entries: [], ship: false, loadedName: null }; renderCart();
+  for (const id of ["qA","qB"]){ $(id).value = ""; $(id).parentElement.classList.remove("has"); }
+  render(); setStatus("데이터 없음", true);
+}
+function showLock(status, info){
+  const blocked = status === "blocked";
+  $("lock").classList.toggle("blocked", blocked);
+  $("lockTitle").textContent = blocked ? "사용이 중지되었습니다" : "승인이 필요합니다";
+  $("lockMsg").innerHTML = blocked
+    ? "관리자에 의해 사용이 중지되어<br>저장된 가격표를 삭제했습니다.<br>다시 사용하려면 관리자에게 문의하세요."
+    : "관리자에게 아래 기기번호를 보내<br>사용 승인을 받으세요.";
+  $("lockId").textContent = DEVICE_ID;
+  $("lockInfo").textContent = info || (authState.checkedAt ? `마지막 확인 ${whenText(authState.checkedAt)}` : "");
+  if ($("lock").hidden){
+    closeSheet(); $("viewer").hidden = true;
+    $("lock").hidden = false;
+  }
+}
+function hideLock(){ $("lock").hidden = true; }
+
+// 명단 확인 → 사용 가능하면 true
+function checkAuth(){
+  if (!authChecking) authChecking = doCheckAuth().finally(() => { authChecking = null; });
+  return authChecking;
+}
+async function doCheckAuth(){
+  let rows;
+  try{ rows = await fetchUserList(); }
+  catch(e){
+    console.warn("사용자 명단 확인 실패", e);
+    if (authState.status !== "ok"){
+      showLock(authState.status, navigator.onLine ? "명단을 확인하지 못했습니다. 잠시 후 [다시 확인]을 눌러 주세요." : "인터넷 연결을 확인한 뒤 [다시 확인]을 눌러 주세요.");
+    }
+    return authState.status === "ok";   // 확인 못하면 직전 상태 유지 (오프라인 잠금 없음)
+  }
+  const me = normId(DEVICE_ID);
+  const row = rows.find(r => normId(r[0]) === me);
+  const prev = authState.status;
+  if (row && isAllowed(row[2])){
+    setAuth("ok", { name: String(row[1] || "").trim() });
+    if (prev !== "ok"){ hideLock(); toast("사용이 승인되었습니다"); }
+    return true;
+  }
+  // 허용이 아님: 예전에 승인됐었거나 X로 등록돼 있으면 '차단', 아직 등록 전이면 '승인 대기'
+  const status = (prev === "ok" || prev === "blocked" || row) ? "blocked" : "pending";
+  if (status === "blocked") await wipeAllData();
+  setAuth(status);
+  showLock(status);
+  return false;
+}
+
+// 잠금 화면 버튼
+$("btnSendId").onclick = async () => {
+  const t = `[판매가 검색기] 사용 승인 요청\n기기번호: ${DEVICE_ID}`;
+  if (navigator.share){
+    try{ await navigator.share({ text: t }); return; }catch(e){ if (e && e.name === "AbortError") return; }
+  }
+  toast(await copyText(DEVICE_ID) ? "기기번호를 복사했습니다" : "복사 실패");
+};
+$("btnCopyId").onclick = async () => { toast(await copyText(DEVICE_ID) ? "기기번호를 복사했습니다" : "복사 실패"); };
+$("btnRecheck").onclick = async () => {
+  const b = $("btnRecheck"); b.disabled = true; b.textContent = "확인 중…";
+  try{
+    if (await checkAuth()) sync(true);
+    else toast(authState.status === "blocked" ? "사용이 중지된 기기입니다" : "아직 승인되지 않았습니다");
+  }finally{ b.disabled = false; b.textContent = "다시 확인"; }
+};
+$("btnLockUpd").onclick = () => $("btnUpd").click();
+
 /* =========================================================
    검색 입력 이벤트
    ========================================================= */
@@ -1264,6 +1441,7 @@ $("btnSync").onclick = async () => {
   // 1) 가격표·이미지가 바뀌었는지 먼저 확인 (파일 정보만 조회, 데이터 거의 안 씀)
   let ex, im = null;
   $("btnSync").disabled = true;
+  if (!(await checkAuth())){ $("btnSync").disabled = false; return; }
   try{
     const base = "https://www.googleapis.com/drive/v3/files/" + EXCEL_FILE_ID;
     setStatus("변경 확인 중…");
@@ -1271,11 +1449,12 @@ $("btnSync").onclick = async () => {
     if (imgMode !== "off") im = await getImageZipInfo();   // 이미지 '끔'이면 이미지는 확인 안 함
   }catch(e){
     console.warn(e);
-    if (items.length) showMetaStatus(); else setStatus("데이터 없음", true);
+    if (items.length) showMetaStatus(navigator.onLine ? "확인 실패" : "확인 실패 (오프라인)", "fail"); else setStatus("데이터 없음", true);
     toast(navigator.onLine ? "확인 실패: " + e.message : "인터넷 연결을 확인하세요");
     return;
   }finally{ $("btnSync").disabled = false; }
   lastCheck = Date.now();
+  markChecked();
   if (items.length) showMetaStatus(); else setStatus("데이터 없음", true);
   const exChanged = !items.length || !meta || meta.source !== "drive" || meta.modifiedTime !== ex.modifiedTime;
   const imChanged = !!im && (!imgMeta || !imgMeta.count || imgMeta.modifiedTime !== im.modifiedTime);
@@ -1326,6 +1505,7 @@ try{ navigator.connection && navigator.connection.addEventListener("change", () 
    시작
    ========================================================= */
 lsDel("rps_data"); lsDel("rps_cfg");   // 이전 버전 저장값 정리
+if (authState.status !== "ok") showLock(authState.status);   // 승인 전이면 처음부터 잠금 화면
 if (loadCache()) showMetaStatus();
 restoreSearch();
 render();
@@ -1359,6 +1539,7 @@ async function checkAppUpdate(){
       newVersion = m[1];
       $("updText").textContent = `새 버전(v${newVersion})이 있습니다`;
       $("updBar").hidden = false;
+      $("btnLockUpd").hidden = false;
     }
   }catch(e){}
   finally{ updChecking = false; }
