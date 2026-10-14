@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.16</title>
+<title>판매가 검색기 v1.0.17</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -218,6 +218,19 @@ main{padding:10px 14px 30px}
 .st.ok{background:#d3f9d8;color:#2b8a3e} .st.no{background:#ffe3e3;color:#c92a2a}
 .st.wait{background:#fff3bf;color:#a86b00} .st.boss{background:#d0ebff;color:#1864ab}
 .st.same{background:#ffe8cc;color:#d9480f}
+/* 앱 공유 */
+.shr{z-index:52}
+.shr .chd{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.shr .chd h3{flex:1;margin:0}
+.shr .qrbox{background:#fff;border-radius:14px;padding:10px;width:max-content;margin:4px auto 10px;border:1px solid var(--line)}
+.shr .qrbox img{display:block;width:210px;height:210px;image-rendering:pixelated}
+.shr .qurl{text-align:center;font-weight:800;font-size:15px;word-break:break-all;color:var(--brand)}
+.shr .btn2{margin-top:14px}
+/* 잠금 화면: 설치 안내 */
+.lock .inst{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 14px;font-size:14px;line-height:1.6}
+.lock .inst #instMsg{white-space:pre-line}
+.lock .inst b{color:var(--brand)}
+.lock .inst .b3d{width:100%;margin-top:8px}
 .urow .u2{display:flex;gap:6px;margin-top:8px;justify-content:flex-end}
 .urow .u2 .b3d{font-size:13px;padding:6px 12px}
 .lock.blocked .lic{filter:grayscale(1)}
@@ -308,7 +321,10 @@ main{padding:10px 14px 30px}
 
   <div class="sec" id="admSec" hidden>
     <div class="lab">관리자</div>
-    <button class="b3d pri" id="btnAdmin" style="width:100%">사용자 관리</button>
+    <div style="display:grid;gap:8px">
+      <button class="b3d pri" id="btnAdmin">사용자 관리</button>
+      <button class="b3d grn" id="btnShareApp">앱 공유</button>
+    </div>
   </div>
 
   <button class="b3d pri full" id="btnClose">닫기</button>
@@ -323,6 +339,17 @@ main{padding:10px 14px 30px}
     <button class="b3d" id="btnAdmRefresh">새로고침</button>
   </div>
   <div class="alist" id="admList"></div>
+</div>
+<!-- 관리자: 앱 공유 -->
+<div class="sheet shr" id="shareSheet">
+  <div class="chd"><h3>앱 공유</h3><button class="b3d icon" id="btnShrClose" style="width:36px;height:36px;font-size:16px">✕</button></div>
+  <div class="qrbox"><img id="qrImg" alt="앱 주소 QR 코드"></div>
+  <div class="qurl" id="shrUrl"></div>
+  <div class="hint" style="text-align:center">직원 폰 카메라로 QR을 찍으면 바로 열립니다</div>
+  <div class="btn2">
+    <button class="b3d grn" id="btnShrSend">카톡/문자로 보내기</button>
+    <button class="b3d" id="btnShrCopy">링크 복사</button>
+  </div>
 </div>
 <!-- 견적함 -->
 <div class="sheet cart" id="cartSheet">
@@ -349,6 +376,11 @@ main{padding:10px 14px 30px}
     <div class="lic">🔒</div>
     <h2 id="lockTitle">승인이 필요합니다</h2>
     <p id="lockMsg">관리자에게 아래 기기번호를 보내<br>사용 승인을 받으세요.</p>
+    <div class="inst" id="instBox" hidden>
+      <div id="instMsg"></div>
+      <button class="b3d grn" id="btnInstall" hidden>앱 설치</button>
+      <button class="b3d pri" id="btnOpenExt" hidden>외부 브라우저로 열기</button>
+    </div>
     <div class="devid" id="lockId">----</div>
     <div class="req" id="reqBox" hidden>
       <input id="reqName" maxlength="20" placeholder="이름 (예: 김OO)" autocomplete="off">
@@ -368,6 +400,7 @@ main{padding:10px 14px 30px}
 
 <script src="xlsx.full.min.js"></script>
 <script src="jszip.min.js"></script>
+<script src="qrcode.min.js"></script>
 <script>
 "use strict";
 /* =========================================================
@@ -376,7 +409,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.16";
+const VERSION = "1.0.17";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
@@ -964,8 +997,8 @@ async function sync(force, skipImg){
 /* =========================================================
    뒤로가기 처리: 열린 창을 기록해 두고 뒤로가기 시 위에서부터 닫음
    ========================================================= */
-const layers = [];   // 열린 순서: "sheet" | "cart" | "admin" | "viewer"
-const LAYER_EL = { sheet: "sheet", cart: "cartSheet", admin: "adminSheet" };
+const layers = [];   // 열린 순서: "sheet" | "cart" | "admin" | "share" | "viewer"
+const LAYER_EL = { sheet: "sheet", cart: "cartSheet", admin: "adminSheet", share: "shareSheet" };
 function hideLayer(name){
   if (name === "viewer") $("viewer").hidden = true;
   else $(LAYER_EL[name] || "sheet").classList.remove("show");
@@ -1396,7 +1429,8 @@ function showLock(status, info){
   $("lockId").textContent = DEVICE_ID;
   $("lockInfo").textContent = info || (authState.checkedAt ? `마지막 확인 ${whenText(authState.checkedAt)}` : "");
   const canRequest = !blocked && !!ADMIN_API_URL && !ADMIN_API_URL.startsWith("__");
-  $("reqBox").hidden = !canRequest || !!authState.requested;
+  updateInstallBox(blocked);
+  $("reqBox").hidden = !canRequest || !!authState.requested || mustInstallFirst();   // 아이폰·카톡 안에서는 설치 후 요청
   $("reqDone").hidden = !canRequest || !authState.requested;
   if (canRequest && authState.name && !$("reqName").value) $("reqName").value = authState.name;
   if (!blocked && authState.requested) startLockPolling(); else stopLockPolling();
@@ -1667,6 +1701,85 @@ $("btnAdmAdd").onclick = async () => {
   }
   if (j) await finish("추가했습니다");
 };
+
+/* =========================================================
+   앱 공유 (관리자) / 설치 안내 (잠금 화면)
+   ========================================================= */
+const APP_URL = new URL("./", location.href).href;   // 예: https://mr-joon.github.io/price/
+const SHARE_TEXT = `[판매가 검색기] 설치 안내
+${APP_URL}
+
+1) 링크 열기 (안드로이드: 크롬 / 아이폰: 사파리)
+2) 홈 화면에 추가
+ · 안드로이드: ⋮ 메뉴 → 홈 화면에 추가
+ · 아이폰: 공유 버튼 → 홈 화면에 추가
+3) 앱 실행 → 이름 입력 → [승인 요청]`;
+
+function openShare(){
+  if (!(authState.status === "ok" && authState.role === "admin")) return;
+  $("shrUrl").textContent = APP_URL;
+  if (!$("qrImg").src){
+    try{
+      const q = qrcode(0, "M"); q.addData(APP_URL); q.make();
+      $("qrImg").src = q.createDataURL(8, 2);
+    }catch(e){ $("qrImg").closest(".qrbox").hidden = true; }
+  }
+  $("mask").classList.add("show"); $("shareSheet").classList.add("show");
+  pushLayer("share");
+}
+$("btnShareApp").onclick = openShare;
+$("btnShrClose").onclick = () => closeLayers(1);
+$("btnShrSend").onclick = async () => {
+  if (navigator.share){
+    try{ await navigator.share({ text: SHARE_TEXT }); return; }
+    catch(e){ if (e && e.name === "AbortError") return; }
+  }
+  toast(await copyText(SHARE_TEXT) ? "안내문을 복사했습니다" : "복사 실패");
+};
+$("btnShrCopy").onclick = async () => { toast(await copyText(APP_URL) ? "링크를 복사했습니다" : "복사 실패"); };
+
+// 설치 상태 확인
+const UA = navigator.userAgent || "";
+const IS_IOS = /iPad|iPhone|iPod/.test(UA) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const IN_APP = /KAKAOTALK|NAVER\(inapp|Line\/|Instagram|FBAN|FBAV|DaumApps|BAND\//i.test(UA);   // 카톡 등 앱 안의 브라우저
+const IS_KAKAO = /KAKAOTALK/i.test(UA);
+function isStandalone(){
+  try{ if (matchMedia("(display-mode: standalone)").matches) return true; }catch(e){}
+  return navigator.standalone === true;
+}
+// 아이폰·앱 안 브라우저는 설치한 앱과 저장 공간이 달라 기기번호가 바뀜 → 설치 후 요청
+function mustInstallFirst(){ return !isStandalone() && (IS_IOS || IN_APP); }
+let installEvt = null;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; updateInstallBox(); });
+window.addEventListener("appinstalled", () => { installEvt = null; updateInstallBox(); toast("설치했습니다. 홈 화면의 앱으로 열어 주세요"); });
+function updateInstallBox(blocked){
+  if (blocked === undefined) blocked = $("lock").classList.contains("blocked");
+  const box = $("instBox");
+  if (isStandalone() || blocked){ box.hidden = true; return; }
+  let msg, inst = false, ext = false;
+  if (IN_APP){
+    msg = IS_IOS ? "앱 안에서는 설치할 수 없습니다\n<b>Safari로 열어</b> 홈 화면에 추가해 주세요"
+                 : "앱 안에서는 설치할 수 없습니다\n<b>크롬으로 열어</b> 설치해 주세요";
+    ext = IS_KAKAO;
+  } else if (installEvt){
+    msg = "<b>먼저 앱을 설치해 주세요</b>"; inst = true;
+  } else if (IS_IOS){
+    msg = "<b>먼저 홈 화면에 추가해 주세요</b>\n공유 버튼(□↑) → 홈 화면에 추가\n추가한 앱에서 승인 요청을 하세요";
+  } else {
+    msg = "<b>홈 화면에 추가하면 앱처럼 쓸 수 있습니다</b>\n크롬 ⋮ 메뉴 → 홈 화면에 추가";
+  }
+  $("instMsg").innerHTML = msg;
+  $("btnInstall").hidden = !inst; $("btnOpenExt").hidden = !ext;
+  box.hidden = false;
+  if (!$("lock").hidden && !blocked) $("reqBox").hidden = !!authState.requested || mustInstallFirst() || !ADMIN_API_URL || ADMIN_API_URL.startsWith("__");
+}
+$("btnInstall").onclick = async () => {
+  if (!installEvt) return;
+  const e = installEvt; installEvt = null;
+  try{ await e.prompt(); await e.userChoice; }catch(err){}
+  updateInstallBox();
+};
+$("btnOpenExt").onclick = () => { location.href = "kakaotalk://web/openExternal?url=" + encodeURIComponent(APP_URL); };
 
 // 잠금 화면 버튼
 $("btnSendId").onclick = async () => {
