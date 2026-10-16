@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.21</title>
+<title>판매가 검색기 v1.0.22</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -208,6 +208,8 @@ main{padding:10px 14px 30px}
 .lock .req input{font-size:16px;padding:10px 12px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--text);font-family:inherit;min-width:0}
 .lock .done{color:var(--ok);font-weight:700;font-size:14px;margin-bottom:10px}
 .setBtn{position:relative}
+#btnSync{position:relative}
+.dot{position:absolute;top:-4px;right:-4px;width:13px;height:13px;border-radius:50%;background:var(--warn);border:2px solid var(--bg)}
 /* ===== 관리자: 사용자 관리 ===== */
 .adm{display:flex;flex-direction:column;max-height:88vh;min-height:80vh;z-index:52}
 .adm .tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
@@ -253,7 +255,7 @@ main{padding:10px 14px 30px}
       <div class="title">판매가 검색기<span class="ver" id="ver"></span></div>
     </div>
     <button class="b3d icon cartBtn" id="btnCart" title="견적함">🛒<span class="badge" id="cartBadge" hidden>0</span></button>
-    <button class="b3d icon" id="btnSync" title="데이터 받기" aria-label="데이터 받기"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18.5H6.5a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 17.6 8.1 4.75 4.75 0 0 1 17.5 18.5H17"/><path d="M12 11v9"/><path d="m8.5 16.5 3.5 3.5 3.5-3.5"/></svg></button>
+    <button class="b3d icon" id="btnSync" title="데이터 받기" aria-label="데이터 받기"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18.5H6.5a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 17.6 8.1 4.75 4.75 0 0 1 17.5 18.5H17"/><path d="M12 11v9"/><path d="m8.5 16.5 3.5 3.5 3.5-3.5"/></svg><span class="dot" id="syncDot" hidden></span></button>
     <button class="b3d icon setBtn" id="btnSet" title="설정">⚙<span class="badge" id="setBadge" hidden>0</span></button>
   </div>
   <div class="status" id="status">데이터 준비 중…</div>
@@ -300,11 +302,10 @@ main{padding:10px 14px 30px}
     <div class="lab">제품 이미지</div>
     <div class="seg" id="segImg">
       <button class="b3d" data-v="off">끔</button>
-      <button class="b3d" data-v="manual">수동</button>
-      <button class="b3d" data-v="auto">자동</button>
+      <button class="b3d" data-v="on">켬</button>
     </div>
     <div class="hint" id="imgInfo"></div>
-    <div class="hint">수동: ☁ 버튼을 누르면 물어보고 받습니다<br>자동: 이미지 버전이 바뀌면 와이파이에서 알아서 받습니다<span id="imgSize"></span></div>
+    <div class="hint">켜면 새 이미지가 있을 때 받을지 물어봅니다<span id="imgSize"></span></div>
   </div>
 
 
@@ -397,7 +398,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.21";
+const VERSION = "1.0.22";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
@@ -449,6 +450,7 @@ function hhmm(ts){ const d = new Date(ts), z = n => String(n).padStart(2,"0"); r
 function text(v){ return v === null || v === undefined ? "" : String(v).trim(); }
 function comma(n){ return Math.trunc(n).toLocaleString("ko-KR"); }
 function mb(bytes){ return (bytes / 1048576).toFixed(1) + "MB"; }
+function sizeText(bytes){ return bytes >= 1048576 ? mb(bytes) : Math.max(1, Math.round(bytes / 1024)) + "KB"; }   // 1MB 미만은 KB로
 
 /* =========================================================
    테마 (자동 / 라이트 / 다크)
@@ -564,18 +566,17 @@ function indexItems(){
 /* =========================================================
    제품 이미지 (드라이브 zip → 썸네일 → IndexedDB)
    ========================================================= */
-let imgMode = lsGetStr(LS.imgMode, "off");     // off | manual | auto
+let imgMode = lsGetStr(LS.imgMode, "off") === "off" ? "off" : "on";   // off | on (예전 수동·자동은 '켬'으로)
 let imgMeta = lsGet(LS.imgMeta);                // {version, count, size, savedAt}
 let imgUrls = new Map();                        // 이미지키 -> blob URL
 let imgBusy = false;
-let imgPending = null;                          // 드라이브에 새 이미지가 있을 때 {version, size}
+// 업데이트 안내: 새 버전이 있으면 팝업으로 묻고 [업데이트]를 눌러야 받음
+let pendingUpd = null;      // { data: {from, to, size} | null, img: {from, to, size} | null }
+let dismissedKey = "";      // [나중에]를 누른 버전 (이번 실행 동안만 다시 묻지 않음 → 앱을 다시 켜면 다시 물음)
+let updating = false, askingUpd = false;
 const LS_IMGSIZE = "rps_img_size";              // 드라이브 이미지 zip 크기 {version, size} (끔이어도 확인 → 안내문에 표시)
 let imgProgress = "";
 
-// 모바일 데이터(또는 데이터 절약 모드)인지 확인 — 안드로이드 크롬에서만 알 수 있음, 모르면 false
-function onCellular(){
-  try{ const c = navigator.connection; return !!c && (c.type === "cellular" || !!c.saveData); }catch(e){ return false; }
-}
 function imageKey(name){ return String(name).replace(/ /g, "").toLowerCase(); }   // PC: 공백 제거 + 소문자
 
 // IndexedDB 도우미
@@ -701,7 +702,7 @@ async function getImageInfo(){
 function updateImgSize(){
   const c = lsGet(LS_IMGSIZE);
   const size = (c && c.size) || (imgMeta && imgMeta.size) || 0;
-  $("imgSize").textContent = size ? ` (현재 약 ${mb(size)})` : "";
+  $("imgSize").textContent = size ? ` (현재 약 ${sizeText(size)})` : "";
 }
 
 async function downloadImages(info){
@@ -742,7 +743,6 @@ async function downloadImages(info){
     await idbReplaceAll(entries);
     imgMeta = { version: info.version, count: entries.length, size: Number(info.size) || zipBlob.size, savedAt: Date.now() };
     lsSet(LS.imgMeta, imgMeta);
-    imgPending = null;
     setImgUrls(new Map(entries));
     render();
     toast(`이미지 ${entries.length}장 저장 완료` + (fail ? ` (${fail}장 실패)` : ""));
@@ -756,23 +756,6 @@ async function downloadImages(info){
   imgBusy = false; imgProgress = ""; updateImgInfo();
 }
 
-// 데이터 확인할 때 같이 호출: 이미지가 바뀌었는지 확인
-async function checkImages(){
-  if (imgBusy) return;
-  if (imgProgress){ imgProgress = ""; updateImgInfo(); }   // 지난번 실패 문구 지우기
-  try{
-    const info = await getImageInfo();     // '끔'이어도 버전·크기는 확인 (안내문에 크기 표시)
-    if (imgMode === "off") return;
-    const changed = !imgMeta || !imgMeta.count || imgMeta.version !== info.version;
-    if (!changed){ imgPending = null; updateImgInfo(); return; }
-    if (imgMode === "auto" && !onCellular()) await downloadImages(info);
-    else {
-      const first = !imgPending;
-      imgPending = info; updateImgInfo();
-      if (first && imgMeta && imgMeta.count) toast("새 제품 이미지가 있습니다 (⚙ 설정)");
-    }
-  }catch(e){ console.warn("이미지 확인 실패", e); }
-}
 
 function updateImgInfo(){
   document.querySelectorAll("#segImg .b3d").forEach(b => b.classList.toggle("on", b.dataset.v === imgMode));
@@ -781,10 +764,8 @@ function updateImgInfo(){
   if (imgBusy || imgProgress){ info.textContent = imgProgress || "준비 중…"; return; }
   let s = imgMeta && imgMeta.count ? `저장된 이미지 ${imgMeta.count}장 · ${hhmm(imgMeta.savedAt)} 받음` : "저장된 이미지 없음";
   if (imgMode === "off") s += " · 표시 안 함";
-  if (imgPending && imgMode !== "off"){
-    s += ` · 새 이미지 있음${imgPending.size ? " (" + mb(Number(imgPending.size)) + ")" : ""}`;
-    if (imgMode === "auto" && onCellular()) s += " · 와이파이 연결 시 자동으로 받음";
-    else if (imgMode === "manual") s += " · ☁로 받기";
+  else if (pendingUpd && pendingUpd.img){
+    s += ` · 새 이미지 있음${pendingUpd.img.size ? " (" + sizeText(pendingUpd.img.size) + ")" : ""} · ☁로 받기`;
     info.classList.add("new");
   }
   info.textContent = s;
@@ -795,7 +776,11 @@ document.querySelectorAll("#segImg .b3d").forEach(b => b.onclick = async () => {
   if (v === imgMode) return;
   imgMode = v; lsSetStr(LS.imgMode, imgMode);
   updateImgInfo(); render();
-  if (imgMode !== "off"){ checkImages(); return; }
+  if (imgMode !== "off"){ sync(false); return; }   // 켜면 새 이미지가 있는지 확인 → 팝업
+  if (pendingUpd && pendingUpd.img){   // 끄면 이미지 업데이트 안내는 빼기
+    pendingUpd.img = null; if (!pendingUpd.data) pendingUpd = null;
+    showPendingState();
+  }
   // 끔: 저장된 이미지가 있으면 지울지 물어봄 (지우면 저장 공간 확보, 보관하면 다시 켤 때 바로 보임)
   if (!(imgMeta && imgMeta.count) || imgBusy) return;
   const size = imgMeta.size ? `, 약 ${mb(imgMeta.size)}` : "";
@@ -803,7 +788,7 @@ document.querySelectorAll("#segImg .b3d").forEach(b => b.onclick = async () => {
     buttons: [["보관", null], ["삭제", "ok", "pri"]] });
   if (!r || r.btn !== "ok") return;
   await idbClear(); setImgUrls(new Map());
-  imgMeta = null; lsDel(LS.imgMeta); imgPending = null;
+  imgMeta = null; lsDel(LS.imgMeta);
   updateImgInfo(); render(); toast("이미지를 삭제했습니다");
 });
 
@@ -867,8 +852,10 @@ function render(){
   saveSearch();
   const out = $("out");
   if (!items.length){
-    if (syncing) out.innerHTML = emptyHtml("가격표를 받는 중…");
+    if (updating) out.innerHTML = emptyHtml("가격표를 받는 중…");
+    else if (syncing) out.innerHTML = emptyHtml("확인 중…");
     else if (syncErr) out.innerHTML = emptyHtml(`가격표를 받지 못했습니다<br><small>${esc(syncErr.reason)}${retryTimer ? " · 자동으로 다시 시도 중" : ""}</small><br><button class="b3d pri" data-retry="1">다시 받기</button>`);
+    else if (pendingUpd && pendingUpd.data) out.innerHTML = emptyHtml(`가격표가 없습니다${pendingUpd.data.size ? `<br><small>약 ${sizeText(pendingUpd.data.size)}</small>` : ""}<br><button class="b3d pri" data-upd="1">가격표 받기</button>`);
     else out.innerHTML = emptyHtml("데이터가 없습니다<br>☁ 데이터 받기 버튼을 눌러 주세요");
     return;
   }
@@ -923,9 +910,10 @@ function whenText(ts){
 function showMetaStatus(extra, mode){
   if (!meta){ setStatus("데이터 없음", true); return; }
   let m = `${meta.dataDate ? meta.dataDate + " 기준 · " : ""}${comma(items.length)}개`;
-  if (mode === "fail") m += ` · ${extra || "확인 실패"}` + (meta.checkedAt ? ` (${whenText(meta.checkedAt)})` : "");
+  if (mode === "pend") m += ` · ${extra}`;   // 새 데이터 있음 (짧게 한 줄)
+  else if (mode === "fail") m += ` · ${extra || "확인 실패"}` + (meta.checkedAt ? ` (${whenText(meta.checkedAt)})` : "");
   else m += ` · 확인 ${whenText(meta.checkedAt || meta.syncedAt)}` + (extra ? " " + extra : "");
-  setStatus(m, mode === "warn" || mode === "fail");
+  setStatus(m, mode === "warn" || mode === "fail" || mode === "pend");
 }
 function markChecked(){ if (meta){ meta.checkedAt = Date.now(); saveDataCache(); } }
 function saveDataCache(){
@@ -1030,49 +1018,132 @@ async function retryNow(){
   await sync(false);
   toast(syncErr ? "다시 실패: " + syncErr.reason : "확인했습니다");
 }
-$("status").addEventListener("click", () => { if ($("status").classList.contains("tap")) retryNow(); });
-$("out").addEventListener("click", ev => { if (ev.target.closest("[data-retry]")) retryNow(); });
-async function sync(force, skipImg){
-  if (syncing) return;
-  if (!(await checkAuth())){ checkAppUpdate(); return; }   // 승인되지 않은 기기는 가격표를 받지 않음
-  if (syncing) return;
+$("status").addEventListener("click", () => {
+  if (!$("status").classList.contains("tap")) return;
+  if (syncErr) retryNow(); else if (pendingUpd) askUpdate();
+});
+$("out").addEventListener("click", ev => {
+  if (ev.target.closest("[data-retry]")) retryNow();
+  else if (ev.target.closest("[data-upd]")){ if (pendingUpd) askUpdate(); else sync(true); }
+});
+// 버전 확인 (가벼움) → 새 버전이 있으면 팝업으로 안내 (자동으로 받지 않음)
+// manual: ☁·승인 직후처럼 사용자가 직접 확인한 경우 → [나중에]를 눌렀던 버전도 다시 묻고, 결과를 알림
+async function sync(manual){
+  if (syncing || updating){ if (manual) toast("확인 중입니다. 잠시 후 다시 눌러 주세요"); return; }
+  if (!(await checkAuth())){ checkAppUpdate(); return; }   // 승인되지 않은 기기는 확인하지 않음
+  if (syncing || updating) return;
   syncing = true; lastCheck = Date.now();
   $("btnSync").disabled = true;
   $("status").classList.remove("tap");
-  const base = DRIVE + EXCEL_FILE_ID;
+  if (imgProgress && !imgBusy){ imgProgress = ""; updateImgInfo(); }   // 지난번 이미지 실패 문구 지우기
+  let ok = false;
   try{
-    if (!items.length){ setStatus("데이터 받는 중…"); render(); }
-    // 1) 버전 파일 이름만 먼저 확인 (가벼움, PC와 같은 방식)
-    const ver = await getDataVersion();
-    if (!force && meta && meta.source === "drive" && meta.dataVersion === ver && items.length){
-      markChecked(); showMetaStatus("최신");
-    } else if (!force && meta && meta.rejectedVersion === ver && items.length){
-      markChecked(); showMetaStatus("· 새 가격표 보류됨 (☁로 다시 받기)", "warn");   // 적용 안 함을 고른 가격표는 다시 묻지 않음
-    } else {
-      // 2) 바뀌었으면 다운로드
-      setStatus("새 데이터 받는 중…");
-      const parsed = parseWorkbook(await driveBuffer(`${base}?alt=media&supportsAllDrives=true&key=${API_KEY}`));
-      if (await confirmShrink(parsed)){
-        applyData(parsed, { dataVersion: ver, source:"drive" });
-        if (force) toast("최신 데이터로 갱신했습니다");
-      } else {
-        meta = Object.assign({}, meta, { rejectedVersion: ver, checkedAt: Date.now() });
-        saveDataCache();
-        showMetaStatus("· 새 가격표 보류됨 (☁로 다시 받기)", "warn");
-      }
-    }
-    syncOk();
+    if (!items.length){ setStatus("확인 중…"); render(); }
+    else if (manual) setStatus("변경 확인 중…");
+    const dv = await getDataVersion();
+    let im = null;
+    try{ im = await getImageInfo(); }                 // 이미지 '끔'이어도 크기 확인 (안내문용)
+    catch(e){ if (imgMode === "on") throw e; }
+    const needData = !items.length || !meta || meta.source !== "drive" || meta.dataVersion !== dv;
+    const needImg = imgMode === "on" && !!im && (!imgMeta || !imgMeta.count || imgMeta.version !== im.version);
+    pendingUpd = (needData || needImg) ? {
+      data: needData ? { from: (meta && meta.dataVersion) || "", to: dv, size: await getDataSize(dv) } : null,
+      img: needImg ? { from: (imgMeta && imgMeta.count && imgMeta.version) || "", to: im.version, size: im.size } : null,
+    } : null;
+    markChecked(); syncOk(); ok = true;
+    if (items.length) showMetaStatus(pendingUpd ? "" : "최신"); else setStatus(pendingUpd ? "" : "데이터 없음", !pendingUpd);
   }catch(e){
     console.warn(e);
     syncing = false;
     syncFail(e);
-    if (force) toast("갱신 실패: " + syncErr.reason);
+    if (manual) toast("확인 실패: " + syncErr.reason);
   }finally{
     syncing = false; $("btnSync").disabled = false;
   }
+  if (ok){
+    showPendingState();
+    if (pendingUpd && (manual || updKey(pendingUpd) !== dismissedKey)) await askUpdate();
+    else if (!pendingUpd && manual) toast("변경된 data가 없습니다 (최신 상태)");
+  }
   if (!items.length) render();
-  if (!skipImg) checkImages();
   checkAppUpdate();
+}
+
+// 가격표 엑셀 크기 (버전이 바뀔 때만 다시 확인)
+const LS_DATASIZE = "rps_data_size";
+async function getDataSize(ver){
+  let c = lsGet(LS_DATASIZE);
+  if (!c || c.version !== ver){
+    try{
+      const j = await driveJson(`${DRIVE}${EXCEL_FILE_ID}?fields=size&supportsAllDrives=true&key=${API_KEY}`);
+      c = { version: ver, size: Number(j.size) || 0 }; lsSet(LS_DATASIZE, c);
+    }catch(e){ return 0; }
+  }
+  return c.size;
+}
+function updKey(u){ return u ? `${u.data ? u.data.to : ""}|${u.img ? u.img.to : ""}` : ""; }
+// 받을 것이 있으면: ☁에 빨간 점 + 상태줄 "새 데이터 있음" (누르면 안내 팝업)
+function showPendingState(){
+  $("syncDot").hidden = !pendingUpd;
+  if (pendingUpd && !syncErr){
+    if (items.length) showMetaStatus("새 데이터 있음 (눌러서 보기)", "pend");
+    else setStatus("새 데이터 있음 (눌러서 보기)", true);
+    $("status").classList.add("tap");
+  } else if (!syncErr) $("status").classList.remove("tap");
+  updateImgInfo();
+  if (!items.length) render();
+}
+// 업데이트 안내 팝업: 무엇이 바뀌었는지 + 용량 → [업데이트]를 눌러야 받음
+async function askUpdate(){
+  if (askingUpd || updating || !pendingUpd) return;
+  askingUpd = true;
+  const u = pendingUpd;
+  let go = false;
+  try{
+    const line = (label, x) => `· ${label} ${x.from ? verLabel(x.from) + " → " : ""}${verLabel(x.to)}${x.size ? ` (약 ${sizeText(x.size)})` : ""}`;
+    const lines = [];
+    if (u.data) lines.push(line("가격표", u.data));
+    if (u.img) lines.push(line("제품 이미지", u.img));
+    const total = (u.data ? u.data.size || 0 : 0) + (u.img ? u.img.size || 0 : 0);
+    const first = !items.length;
+    const r = await dialog({ title: first ? "가격표 받기" : "업데이트 안내",
+      msg: (first ? "가격표가 없습니다. 받을까요?" : "새 데이터가 있습니다.") + "\n\n" + lines.join("\n")
+        + "\n\n" + (total && lines.length > 1 ? `합계 약 ${sizeText(total)} · ` : "") + "모바일 데이터 사용 시 요금이 발생할 수 있습니다.",
+      buttons: [["나중에", null], ["업데이트", "ok", "pri"]] });
+    go = !!(r && r.btn === "ok");
+    if (!go){ dismissedKey = updKey(u); toast("나중에 ☁ 버튼으로 받을 수 있습니다"); }
+  }finally{ askingUpd = false; }
+  if (go) await applyUpdate(u);
+}
+async function applyUpdate(u){
+  if (updating) return;
+  updating = true; $("btnSync").disabled = true;
+  try{
+    if (u.data) await downloadData(u.data.to);
+    if (u.img && imgMode === "on") await downloadImages({ version: u.img.to, size: u.img.size });
+  }finally{ updating = false; $("btnSync").disabled = false; }
+  // 받지 못한 것(실패·적용 안 함)만 남김 → 이번 실행 동안은 다시 묻지 않음 (☁로 다시 받기)
+  const leftData = u.data && !(meta && meta.dataVersion === u.data.to) ? u.data : null;
+  const leftImg = u.img && imgMode === "on" && !(imgMeta && imgMeta.count && imgMeta.version === u.img.to) ? u.img : null;
+  pendingUpd = (leftData || leftImg) ? { data: leftData, img: leftImg } : null;
+  if (pendingUpd) dismissedKey = updKey(pendingUpd);
+  else if (items.length) showMetaStatus("최신");
+  showPendingState();
+}
+async function downloadData(ver){
+  setStatus("새 가격표 받는 중…"); if (!items.length) render();
+  try{
+    const parsed = parseWorkbook(await driveBuffer(`${DRIVE}${EXCEL_FILE_ID}?alt=media&supportsAllDrives=true&key=${API_KEY}`));
+    if (!(await confirmShrink(parsed))){ if (items.length) showMetaStatus(); toast("새 가격표를 적용하지 않았습니다"); return false; }
+    applyData(parsed, { dataVersion: ver, source: "drive" });
+    toast("가격표를 업데이트했습니다");
+    return true;
+  }catch(e){
+    console.warn(e);
+    toast("가격표 받기 실패: " + errText(e));
+    if (items.length) showMetaStatus(); else setStatus("가격표 받기 실패: " + errText(e), true);
+    return false;
+  }
 }
 
 /* =========================================================
@@ -1477,7 +1548,7 @@ async function wipeAllData(){
   lsDel(LS.data); lsDel(LS.imgMeta); lsDel(LS_CART); lsDel(LS_QUOTES);
   try{ sessionStorage.removeItem(SS_SEARCH); }catch(e){}
   try{ await idbClear(); }catch(e){}
-  setImgUrls(new Map()); imgMeta = null; imgPending = null;
+  setImgUrls(new Map()); imgMeta = null; pendingUpd = null; dismissedKey = ""; $("syncDot").hidden = true;
   items = []; meta = null; indexItems();
   cart = { entries: [], ship: false, loadedName: null }; renderCart();
   for (const id of ["qA","qB"]){ $(id).value = ""; $(id).parentElement.classList.remove("has"); }
@@ -1899,49 +1970,10 @@ document.querySelectorAll(".clr").forEach(b => b.onclick = () => {
   const inp = $(b.dataset.for); inp.value = ""; inp.parentElement.classList.remove("has"); render(); inp.focus();
 });
 $("btnSync").onclick = async () => {
-  if (syncing){ toast("확인 중입니다. 잠시 후 다시 눌러 주세요"); return; }
+  if (syncing || updating){ toast("확인 중입니다. 잠시 후 다시 눌러 주세요"); return; }
   if (imgBusy){ toast("이미지를 받는 중입니다 (⚙ 설정에서 진행 상황 확인)"); return; }
-  // 1) 가격표·이미지가 바뀌었는지 먼저 확인 (파일 정보만 조회, 데이터 거의 안 씀)
-  let ex, im = null;
-  $("btnSync").disabled = true;
-  if (!(await checkAuth())){ $("btnSync").disabled = false; return; }
-  try{
-    setStatus("변경 확인 중…");
-    ex = await getDataVersion();
-    if (imgMode !== "off") im = await getImageInfo();   // 이미지 '끔'이면 이미지는 받지 않음
-  }catch(e){
-    console.warn(e);
-    const info = errInfo(e);
-    if (items.length) showMetaStatus(info.reason, "fail"); else setStatus(info.reason, true);
-    toast("확인 실패: " + info.reason);
-    return;
-  }finally{ $("btnSync").disabled = false; }
-  lastCheck = Date.now();
-  markChecked();
-  if (items.length) showMetaStatus(); else setStatus("데이터 없음", true);
-  const exChanged = !items.length || !meta || meta.source !== "drive" || meta.dataVersion !== ex;
-  const imChanged = !!im && (!imgMeta || !imgMeta.count || imgMeta.version !== im.version);
-  if (!exChanged && !imChanged){
-    if (items.length) showMetaStatus("최신");
-    toast("변경된 data가 없습니다 (최신 상태)");
-    checkAppUpdate();
-    return;
-  }
-  // 2) 바뀐 것이 있으면 무엇이 바뀌었는지 보여주고 물어봄
-  const what = [];
-  if (exChanged) what.push(`· 가격표 (${meta && meta.dataVersion ? verLabel(meta.dataVersion) + " → " : ""}${verLabel(ex)})`);
-  if (imChanged) what.push("· 제품 이미지" + (im.size ? ` (약 ${mb(Number(im.size))})` : ""));
-  const when = meta && meta.dataDate ? `\n(현재 가격표: ${meta.dataDate} 기준)` : "";
-  const r = await dialog({ title: "데이터 받기",
-    msg: "최신 data를 받을까요?\n\n변경된 항목\n" + what.join("\n") + "\n\n모바일 데이터 사용 시 요금이 발생할 수 있습니다." + when,
-    buttons: [["아니오", null], ["예", "ok", "pri"]] });
-  if (!r || r.btn !== "ok") return;
-  // 3) 바뀐 것만 받기
-  if (exChanged){
-    while (syncing) await new Promise(res => setTimeout(res, 300));   // 자동 확인이 도는 중이면 끝날 때까지 기다림
-    await sync(true, true);
-  }
-  if (imChanged) await downloadImages(im);
+  retryStep = 0; clearRetry();
+  await sync(true);   // 버전 확인 → 바뀐 게 있으면 안내 팝업 (없으면 '최신' 알림)
 };
 
 // 검색 초기화 (PC 초기화와 동일): 두 검색창을 비우고 처음 화면으로
@@ -1967,8 +1999,6 @@ document.addEventListener("visibilitychange", () => {
 });
 setInterval(() => { if (!document.hidden) sync(false); }, CHECK_INTERVAL_MS);
 window.addEventListener("online", () => { retryStep = 0; clearRetry(); setTimeout(() => sync(false), 1500); });
-// 모바일 데이터 → 와이파이로 바뀌면 미뤄둔 이미지 받기
-try{ navigator.connection && navigator.connection.addEventListener("change", () => { if (imgMode === "auto" && imgPending && !onCellular()) checkImages(); }); }catch(e){}
 
 /* =========================================================
    시작
