@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.22</title>
+<title>판매가 검색기 v1.0.23</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -398,7 +398,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.22";
+const VERSION = "1.0.23";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
@@ -572,7 +572,12 @@ let imgUrls = new Map();                        // 이미지키 -> blob URL
 let imgBusy = false;
 // 업데이트 안내: 새 버전이 있으면 팝업으로 묻고 [업데이트]를 눌러야 받음
 let pendingUpd = null;      // { data: {from, to, size} | null, img: {from, to, size} | null }
-let dismissedKey = "";      // [나중에]를 누른 버전 (이번 실행 동안만 다시 묻지 않음 → 앱을 다시 켜면 다시 물음)
+// [나중에]를 누른 버전: 이번 실행 동안 다시 묻지 않음
+// sessionStorage에 두어서 폰이 백그라운드 앱을 정리했다가 다시 불러올 때는 유지, 앱을 직접 껐다 켜면 다시 물음
+const SS_DISMISS = "rps_dismiss";
+let dismissedKey = "";
+try{ dismissedKey = sessionStorage.getItem(SS_DISMISS) || ""; }catch(e){}
+function setDismissed(k){ dismissedKey = k || ""; try{ sessionStorage.setItem(SS_DISMISS, dismissedKey); }catch(e){} }
 let updating = false, askingUpd = false;
 const LS_IMGSIZE = "rps_img_size";              // 드라이브 이미지 zip 크기 {version, size} (끔이어도 확인 → 안내문에 표시)
 let imgProgress = "";
@@ -839,6 +844,16 @@ const SS_SEARCH = "rps_search";
 function saveSearch(){
   try{ sessionStorage.setItem(SS_SEARCH, JSON.stringify({ mode, a: $("qA").value, b: $("qB").value })); }catch(e){}
 }
+// 스크롤 위치: 백그라운드로 갈 때 저장 → 폰이 다시 불러오면 그 위치로 (앱을 직접 껐다 켜면 처음 화면)
+const SS_SCROLL = "rps_scroll";
+try{ history.scrollRestoration = "manual"; }catch(e){}
+function saveScroll(){ try{ sessionStorage.setItem(SS_SCROLL, String(Math.round(window.scrollY || 0))); }catch(e){} }
+function restoreScroll(){
+  let y = 0; try{ y = parseInt(sessionStorage.getItem(SS_SCROLL), 10) || 0; }catch(e){}
+  if (y > 0) window.scrollTo(0, y);
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) saveScroll(); });
+window.addEventListener("pagehide", saveScroll);
 function restoreSearch(){
   let st = null;
   try{ st = JSON.parse(sessionStorage.getItem(SS_SEARCH)); }catch(e){}
@@ -1111,7 +1126,7 @@ async function askUpdate(){
         + "\n\n" + (total && lines.length > 1 ? `합계 약 ${sizeText(total)} · ` : "") + "모바일 데이터 사용 시 요금이 발생할 수 있습니다.",
       buttons: [["나중에", null], ["업데이트", "ok", "pri"]] });
     go = !!(r && r.btn === "ok");
-    if (!go){ dismissedKey = updKey(u); toast("나중에 ☁ 버튼으로 받을 수 있습니다"); }
+    if (!go){ setDismissed(updKey(u)); toast("나중에 ☁ 버튼으로 받을 수 있습니다"); }
   }finally{ askingUpd = false; }
   if (go) await applyUpdate(u);
 }
@@ -1126,7 +1141,7 @@ async function applyUpdate(u){
   const leftData = u.data && !(meta && meta.dataVersion === u.data.to) ? u.data : null;
   const leftImg = u.img && imgMode === "on" && !(imgMeta && imgMeta.count && imgMeta.version === u.img.to) ? u.img : null;
   pendingUpd = (leftData || leftImg) ? { data: leftData, img: leftImg } : null;
-  if (pendingUpd) dismissedKey = updKey(pendingUpd);
+  if (pendingUpd) setDismissed(updKey(pendingUpd));
   else if (items.length) showMetaStatus("최신");
   showPendingState();
 }
@@ -1548,7 +1563,7 @@ async function wipeAllData(){
   lsDel(LS.data); lsDel(LS.imgMeta); lsDel(LS_CART); lsDel(LS_QUOTES);
   try{ sessionStorage.removeItem(SS_SEARCH); }catch(e){}
   try{ await idbClear(); }catch(e){}
-  setImgUrls(new Map()); imgMeta = null; pendingUpd = null; dismissedKey = ""; $("syncDot").hidden = true;
+  setImgUrls(new Map()); imgMeta = null; pendingUpd = null; setDismissed(""); $("syncDot").hidden = true;
   items = []; meta = null; indexItems();
   cart = { entries: [], ship: false, loadedName: null }; renderCart();
   for (const id of ["qA","qB"]){ $(id).value = ""; $(id).parentElement.classList.remove("has"); }
@@ -2009,10 +2024,11 @@ updateAdminBadge(null);
 if (loadCache()) showMetaStatus();
 restoreSearch();
 render();
+restoreScroll();
 renderCart();
 updateImgInfo();
 (async () => {
-  if (imgMeta && imgMeta.count) { await loadImagesFromDb(); render(); }
+  if (imgMeta && imgMeta.count) { await loadImagesFromDb(); render(); restoreScroll(); }   // 이미지가 들어간 뒤 위치 다시 맞춤
   sync(false);
 })();
 
