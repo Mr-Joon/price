@@ -1,6 +1,6 @@
 // 판매가 검색기 서비스워커 — 앱 화면을 폰에 저장해 오프라인에서도 실행
 // 버전을 올리면 이전 캐시가 지워지고 새 화면이 적용됩니다.
-const CACHE = "rps-v1.0.32";
+const CACHE = "rps-v1.0.33";
 const SHELL = ["./", "index.html", "xlsx.full.min.js", "jszip.min.js", "qrcode.min.js", "manifest.json", "icon-192.png", "icon-512.png"];
 const NAV_TIMEOUT_MS = 3000;   // 앱을 열 때 3초 안에 응답이 없으면 폰에 저장된 화면으로 바로 열기
 
