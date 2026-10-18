@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.24</title>
+<title>판매가 검색기 v1.0.25</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -80,8 +80,8 @@ body{padding-bottom:env(safe-area-inset-bottom)}
   background:var(--warn);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;border:2px solid var(--bg)}
 
 /* ===== 모드 탭 ===== */
-.tabs{display:grid;grid-template-columns:1fr 1fr 44px;gap:8px;margin-bottom:10px}
-.tabs .icon{width:44px;height:auto;min-height:40px}
+.tabs{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:10px}
+.tabs .rst{padding-left:14px;padding-right:14px;white-space:nowrap}
 .ico{width:22px;height:22px;display:block}
 
 /* ===== 검색창 ===== */
@@ -262,7 +262,7 @@ main{padding:10px 14px 30px}
   <div class="tabs">
     <button class="b3d on" id="tabAll">통합검색</button>
     <button class="b3d" id="tabCmp">비교검색</button>
-    <button class="b3d icon" id="btnClearSearch" title="검색 초기화" aria-label="검색 초기화"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4v5h5"/></svg></button>
+    <button class="b3d rst" id="btnClearSearch" title="검색 초기화">초기화</button>
   </div>
   <div class="srow">
     <div class="sbox" id="boxA">
@@ -398,7 +398,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.24";
+const VERSION = "1.0.25";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
