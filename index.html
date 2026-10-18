@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.23</title>
+<title>판매가 검색기 v1.0.24</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -398,7 +398,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.23";
+const VERSION = "1.0.24";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
@@ -839,24 +839,24 @@ function cardHtml(it, mainItem){
 }
 function emptyHtml(msg){ return `<div class="empty">${msg}</div>`; }
 
-/* ---------- 새로고침해도 검색어·탭 유지 (앱을 완전히 끄면 처음 화면) ---------- */
+/* ---------- 마지막 검색 화면 기억: 앱을 껐다 켜도 검색어·탭·스크롤 그대로 (↻ 초기화로 처음 화면) ---------- */
 const SS_SEARCH = "rps_search";
 function saveSearch(){
-  try{ sessionStorage.setItem(SS_SEARCH, JSON.stringify({ mode, a: $("qA").value, b: $("qB").value })); }catch(e){}
+  lsSet(SS_SEARCH, { mode, a: $("qA").value, b: $("qB").value });
 }
-// 스크롤 위치: 백그라운드로 갈 때 저장 → 폰이 다시 불러오면 그 위치로 (앱을 직접 껐다 켜면 처음 화면)
+// 스크롤 위치: 백그라운드로 가거나 앱을 끌 때 저장 → 다시 열면 그 위치로
 const SS_SCROLL = "rps_scroll";
 try{ history.scrollRestoration = "manual"; }catch(e){}
-function saveScroll(){ try{ sessionStorage.setItem(SS_SCROLL, String(Math.round(window.scrollY || 0))); }catch(e){} }
+function saveScroll(){ lsSetStr(SS_SCROLL, String(Math.round(window.scrollY || 0))); }
 function restoreScroll(){
-  let y = 0; try{ y = parseInt(sessionStorage.getItem(SS_SCROLL), 10) || 0; }catch(e){}
+  const y = parseInt(lsGetStr(SS_SCROLL, "0"), 10) || 0;
   if (y > 0) window.scrollTo(0, y);
 }
 document.addEventListener("visibilitychange", () => { if (document.hidden) saveScroll(); });
 window.addEventListener("pagehide", saveScroll);
 function restoreSearch(){
   let st = null;
-  try{ st = JSON.parse(sessionStorage.getItem(SS_SEARCH)); }catch(e){}
+  st = lsGet(SS_SEARCH);
   if (!st) return;
   $("qA").value = st.a || ""; $("qB").value = st.b || "";
   for (const id of ["qA","qB"]) $(id).parentElement.classList.toggle("has", !!$(id).value);
@@ -1561,7 +1561,7 @@ function setAuth(status, extra){
 // 차단 시: 이 폰에 저장된 가격 관련 데이터 모두 삭제
 async function wipeAllData(){
   lsDel(LS.data); lsDel(LS.imgMeta); lsDel(LS_CART); lsDel(LS_QUOTES);
-  try{ sessionStorage.removeItem(SS_SEARCH); }catch(e){}
+  lsDel(SS_SEARCH); lsDel(SS_SCROLL);
   try{ await idbClear(); }catch(e){}
   setImgUrls(new Map()); imgMeta = null; pendingUpd = null; setDismissed(""); $("syncDot").hidden = true;
   items = []; meta = null; indexItems();
