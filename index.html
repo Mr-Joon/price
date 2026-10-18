@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.35</title>
+<title>판매가 검색기 v1.0.36</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -48,7 +48,7 @@ html,body{margin:0;background:var(--bg);color:var(--text);
 body{padding-bottom:env(safe-area-inset-bottom)}
 
 /* ===== 상단 고정 영역 ===== */
-.top{position:sticky;top:0;z-index:10;background:var(--bg);
+.top{position:sticky;top:0;z-index:10;background:var(--bg);transition:top .2s;
   padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;border-bottom:1px solid var(--line)}
 .head{display:flex;align-items:center;gap:8px}
 .title{font-size:18px;font-weight:800;color:var(--logo);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
@@ -145,6 +145,12 @@ main{padding:10px 14px 30px}
 .p .v{font-size:15px;font-weight:800;margin-top:1px}
 .p .d{font-size:11px;font-weight:700;margin-top:2px}
 .p.rw .v{color:var(--reward)}
+.p .v .none{color:var(--sub);font-weight:700;font-size:14px}   /* 가격 없음 */
+.p .dc{font-size:11px;font-weight:700;color:var(--sub);margin-top:2px}   /* 보상가 칸 안: 할인된가격 · 할인율 */
+.card.c .p .dc{display:none}   /* 비교 카드는 차이(▲▼)를 보여 주므로 생략 */
+/* 카드의 네이버 스토어 검색 버튼 */
+.nvs{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;text-decoration:none}
+.nvs::before{content:"";display:block;width:30px;height:15px;background:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCAyMCI+PHBhdGggZD0iTTYxLjggMTUuNkg0NXYyLjVoMTYuOHpNNTQuNyAxLjVoLTIuNnY0LjFjMCAxLjMtLjcgMi40LTEuOSAyLjlxLTEuOTUuOS00LjguOVYxMmMyLjMgMCA0LjItLjQgNS45LTEuMi44LS40IDEuNS0uOSAyLjEtMS42LjYuNyAxLjMgMS4yIDIuMSAxLjYgMS43LjggMy42IDEuMSA1LjkgMS4yVjkuNGMtMS45IDAtMy40LS4zLTQuOC0uOS0xLjEtLjUtMS45LTEuNy0xLjktMi45di00Wm0yNS45IDE0LjJ2Mi41SDYzLjh2LTIuNWg3di0yLjRoMi44djIuNHptLTEzLjUtNS41VjguMWgxMi43VjUuOEg2Ni4zYy0xIDAtMS44LjgtMS44IDEuOHYzLjFjMCAxIC44IDEuOCAxLjggMS44aDEzLjV2LTIuM3ptMTIuOC04LjdINjQuNnYyLjNoMTUuM3ptNy41LS4yYy0xLjQgMC0yLjYuNS0zLjQgMS40LS45LjktMS4zIDIuMy0xLjMgNHY2LjJjMCAxLjcuNCAzIDEuMyA0IC45LjkgMiAxLjQgMy40IDEuNHMyLjYtLjUgMy40LTEuNGMuOS0uOSAxLjMtMi4yIDEuMy00VjYuN2MwLTEuNy0uNC0zLjEtMS4zLTRzLTItMS40LTMuNC0xLjRtMi4xIDExLjZjMCAxLS4yIDEuNy0uNiAyLjJzLS45LjctMS42LjctMS4yLS4yLTEuNi0uNy0uNi0xLjItLjYtMi4yVjYuN2MwLTEgLjItMS43LjYtMi4ycy45LS43IDEuNi0uNyAxLjIuMiAxLjYuNy42IDEuMi42IDIuMnptNS44LTExLjd2Ni42aC0yLjV2Mi42aDIuNXY4LjRIOThWMS4yek0zOC4yIDIwSDIwVjBoMTguMmMxIDAgMS44LjggMS44IDEuOHYxNi40YzAgMS0uOCAxLjgtMS44IDEuOCIgc3R5bGU9ImZpbGw6IzczNDZmMyIvPjxwYXRoIGQ9Ik0zNS4zIDguN2gtNHYtNGgtMi43djRoLTR2Mi43aDEwLjd6bS02LjYgM3YzLjZoMi43di0xLjhjMC0xLjMtMS4zLTEuOC0yLjctMS44IiBzdHlsZT0iZmlsbDojZmZmIi8+PHBhdGggZD0iTTEuOCAwSDIwdjIwSDEuOGMtMSAwLTEuOC0uOC0xLjgtMS44VjEuOEMwIC44LjggMCAxLjggMCIgc3R5bGU9ImZpbGw6IzAzYzc1YSIvPjxwYXRoIGQ9Ik0xMS45IDEwLjMgOC4zIDUuMWgtM3Y5LjhoMy4yVjkuN2wzLjYgNS4yaDNWNS4xaC0zLjJ6IiBzdHlsZT0iZmlsbDojZmZmO2ZpbGwtcnVsZTpldmVub2RkIi8+PC9zdmc+") center/contain no-repeat}
 .d.higher{color:var(--warn)} .d.lower{color:var(--ok)} .d.same,.d.muted{color:var(--sub)}
 .meta{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--sub);flex-wrap:wrap}
 .memo{background:var(--chip);border-radius:6px;padding:2px 7px;color:var(--text)}
@@ -425,7 +431,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.35";
+const VERSION = "1.0.36";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
@@ -834,10 +840,13 @@ function diffText(compareVal, mainVal){
   if (d < 0) return [`${comma(-d)}원 낮음 ▼`, "lower"];
   return ["동일", "same"];
 }
+const STORE_SEARCH = "https://brand.naver.com/hpt/search?q=";
+function priceText(v){ return v ? `${comma(v)} 원` : `<span class="none">없음</span>`; }   // 0원 = 가격 없음
 function cardHtml(it, mainItem){
   const isCmp = !!mainItem;
   let disc = 0, rate = "0.0%";
   if (it.n !== 0 && it.r !== 0){ disc = it.n - it.r; rate = (disc / it.n * 100).toFixed(1) + "%"; }
+  const storeQ = stripGen(it.model) || it.model;   // 괄호(세대 표시 등) 빼고 검색
   const nd = isCmp ? diffText(it.n, mainItem.n) : null;
   const rd = isCmp ? diffText(it.r, mainItem.r) : null;
   const link = productUrl(it);
@@ -851,16 +860,15 @@ function cardHtml(it, mainItem){
       </div>
     </div>
     <div class="prices">
-      <div class="p"><div class="l">일반판매가</div><div class="v">${comma(it.n)} 원</div>${nd ? `<div class="d ${nd[1]}">${nd[0]}</div>` : ""}</div>
-      <div class="p rw"><div class="l">보상판매가</div><div class="v">${comma(it.r)} 원</div>${rd ? `<div class="d ${rd[1]}">${rd[0]}</div>` : ""}</div>
-      <div class="p"><div class="l">할인된가격</div><div class="v">${comma(disc)} 원</div></div>
-      <div class="p"><div class="l">할인율</div><div class="v">${rate}</div></div>
+      <div class="p"><div class="l">일반판매가</div><div class="v">${priceText(it.n)}</div>${nd ? `<div class="d ${nd[1]}">${nd[0]}</div>` : ""}</div>
+      <div class="p rw"><div class="l">보상판매가</div><div class="v">${priceText(it.r)}</div>${disc ? `<div class="dc">할인 ${comma(disc)}원 · ${rate}</div>` : ""}${rd ? `<div class="d ${rd[1]}">${rd[0]}</div>` : ""}</div>
     </div>
     <div class="meta">
       ${it.box ? `<span>${esc(it.box)}</span>` : ""}
       ${it.memo ? `<span class="memo">${esc(it.memo)}</span>` : ""}
       <span class="cacts">
         ${link ? `<a class="b3d link" href="${esc(link)}" target="_blank" rel="noopener">🔗 상세</a>` : ""}
+        <a class="b3d nvs" href="${STORE_SEARCH}${encodeURIComponent(storeQ)}" target="_blank" rel="noopener" title="네이버 스토어에서 찾기" aria-label="네이버 스토어에서 찾기"></a>
         <button class="b3d grn add" data-add="${esc(it.model)}">＋ 담기</button>
       </span>
     </div>
@@ -873,6 +881,19 @@ const SS_SEARCH = "rps_search";
 function saveSearch(){
   lsSet(SS_SEARCH, { mode, a: $("qA").value, b: $("qB").value });
 }
+// 스크롤하면 상단 접기: 아래로 내리면 로고·제목·상태줄이 위로 숨고 탭·검색창만 남음, 위로 올리면 다시 보임
+(function(){
+  const top = document.querySelector(".top");
+  let lastY = window.scrollY, hidden = false;
+  function hideAmount(){ return Math.max(0, $("tabAll").parentElement.offsetTop - parseFloat(getComputedStyle(top).paddingTop)); }
+  function setHidden(h){ if (h === hidden) return; hidden = h; top.style.top = h ? `-${hideAmount()}px` : "0px"; }
+  window.addEventListener("scroll", () => {
+    const y = window.scrollY, dy = y - lastY; lastY = y;
+    if (y < 80) setHidden(false);
+    else if (dy > 6) setHidden(true);
+    else if (dy < -6) setHidden(false);
+  }, { passive: true });
+})();
 // 스크롤 위치: 백그라운드로 가거나 앱을 끌 때 저장 → 다시 열면 그 위치로
 const SS_SCROLL = "rps_scroll";
 try{ history.scrollRestoration = "manual"; }catch(e){}
