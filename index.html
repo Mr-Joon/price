@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.27</title>
+<title>판매가 검색기 v1.0.28</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -132,8 +132,8 @@ main{padding:10px 14px 30px}
 .d.higher{color:var(--warn)} .d.lower{color:var(--ok)} .d.same,.d.muted{color:var(--sub)}
 .meta{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--sub);flex-wrap:wrap}
 .memo{background:var(--chip);border-radius:6px;padding:2px 7px;color:var(--text)}
-.link{margin-left:auto;color:var(--brand);font-weight:700;text-decoration:none;font-size:13px}
-.nolink{margin-left:auto}
+.cacts{margin-left:auto;display:flex;gap:6px}   /* 카드 오른쪽 버튼 묶음: [🔗 상세] [＋ 담기] */
+.link{display:inline-flex;align-items:center;text-decoration:none;color:var(--text);font-size:13px;padding:6px 10px}
 .add{font-size:13px;padding:6px 10px}
 
 /* ===== 견적함 ===== */
@@ -404,7 +404,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.27";
+const VERSION = "1.0.28";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
@@ -838,8 +838,10 @@ function cardHtml(it, mainItem){
     <div class="meta">
       ${it.box ? `<span>${esc(it.box)}</span>` : ""}
       ${it.memo ? `<span class="memo">${esc(it.memo)}</span>` : ""}
-      ${link ? `<a class="link" href="${esc(link)}" target="_blank" rel="noopener">상세 ↗</a>` : `<span class="nolink">링크 없음</span>`}
-      <button class="b3d grn add" data-add="${esc(it.model)}">＋ 담기</button>
+      <span class="cacts">
+        ${link ? `<a class="b3d link" href="${esc(link)}" target="_blank" rel="noopener">🔗 상세</a>` : ""}
+        <button class="b3d grn add" data-add="${esc(it.model)}">＋ 담기</button>
+      </span>
     </div>
   </div>`;
 }
