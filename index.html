@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.33</title>
+<title>판매가 검색기 v1.0.34</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -89,6 +89,11 @@ body{padding-bottom:env(safe-area-inset-bottom)}
 .b3d.nvp{background:#7346f3;color:#fff;box-shadow:0 3px 0 #5129c4,0 4px 8px rgba(0,0,0,.18)}
 .b3d.nvp:active{box-shadow:0 0 0 #5129c4}
 /* 닫기 버튼 (모든 창 오른쪽 위, 같은 모양) */
+/* 하단 고정 네이버 스토어 버튼 */
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--card);border-top:1px solid var(--line);
+  padding:8px 12px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -4px 12px rgba(0,0,0,.06)}
+.bnav .b3d{width:100%;display:flex;align-items:center;justify-content:center;min-height:46px}
+#out{padding-bottom:calc(80px + env(safe-area-inset-bottom))}   /* 마지막 카드가 하단 버튼에 가리지 않게 */
 .b3d.xbtn{font-size:14px;padding:7px 12px;min-height:36px;white-space:nowrap;flex:none}
 .cartBtn{position:relative}
 .badge{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;
@@ -301,6 +306,8 @@ main{padding:10px 14px 30px}
 </div>
 
 <main id="out"></main>
+<!-- 하단 고정: 네이버 스토어 -->
+<nav class="bnav"><button class="b3d" id="btnStore"  aria-label="네이버 스토어"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5OSAyMCI+PHBhdGggZD0iTTYxLjggMTUuNkg0NXYyLjVoMTYuOHpNNTQuNyAxLjVoLTIuNnY0LjFjMCAxLjMtLjcgMi40LTEuOSAyLjlxLTEuOTUuOS00LjguOVYxMmMyLjMgMCA0LjItLjQgNS45LTEuMi44LS40IDEuNS0uOSAyLjEtMS42LjYuNyAxLjMgMS4yIDIuMSAxLjYgMS43LjggMy42IDEuMSA1LjkgMS4yVjkuNGMtMS45IDAtMy40LS4zLTQuOC0uOS0xLjEtLjUtMS45LTEuNy0xLjktMi45di00Wm0yNS45IDE0LjJ2Mi41SDYzLjh2LTIuNWg3di0yLjRoMi44djIuNHptLTEzLjUtNS41VjguMWgxMi43VjUuOEg2Ni4zYy0xIDAtMS44LjgtMS44IDEuOHYzLjFjMCAxIC44IDEuOCAxLjggMS44aDEzLjV2LTIuM3ptMTIuOC04LjdINjQuNnYyLjNoMTUuM3ptNy41LS4yYy0xLjQgMC0yLjYuNS0zLjQgMS40LS45LjktMS4zIDIuMy0xLjMgNHY2LjJjMCAxLjcuNCAzIDEuMyA0IC45LjkgMiAxLjQgMy40IDEuNHMyLjYtLjUgMy40LTEuNGMuOS0uOSAxLjMtMi4yIDEuMy00VjYuN2MwLTEuNy0uNC0zLjEtMS4zLTRzLTItMS40LTMuNC0xLjRtMi4xIDExLjZjMCAxLS4yIDEuNy0uNiAyLjJzLS45LjctMS42LjctMS4yLS4yLTEuNi0uNy0uNi0xLjItLjYtMi4yVjYuN2MwLTEgLjItMS43LjYtMi4ycy45LS43IDEuNi0uNyAxLjIuMiAxLjYuNy42IDEuMi42IDIuMnptNS44LTExLjd2Ni42aC0yLjV2Mi42aDIuNXY4LjRIOThWMS4yek0zOC4yIDIwSDIwVjBoMTguMmMxIDAgMS44LjggMS44IDEuOHYxNi40YzAgMS0uOCAxLjgtMS44IDEuOCIgc3R5bGU9ImZpbGw6IzczNDZmMyIvPjxwYXRoIGQ9Ik0zNS4zIDguN2gtNHYtNGgtMi43djRoLTR2Mi43aDEwLjd6bS02LjYgM3YzLjZoMi43di0xLjhjMC0xLjMtMS4zLTEuOC0yLjctMS44IiBzdHlsZT0iZmlsbDojZmZmIi8+PHBhdGggZD0iTTEuOCAwSDIwdjIwSDEuOGMtMSAwLTEuOC0uOC0xLjgtMS44VjEuOEMwIC44LjggMCAxLjggMCIgc3R5bGU9ImZpbGw6IzAzYzc1YSIvPjxwYXRoIGQ9Ik0xMS45IDEwLjMgOC4zIDUuMWgtM3Y5LjhoMy4yVjkuN2wzLjYgNS4yaDNWNS4xaC0zLjJ6IiBzdHlsZT0iZmlsbDojZmZmO2ZpbGwtcnVsZTpldmVub2RkIi8+PC9zdmc+" alt="네이버 플러스 스토어" style="height:22px;width:auto;display:block"></button></nav>
 
 <!-- 설정 -->
 <div class="mask" id="mask"></div>
@@ -327,11 +334,6 @@ main{padding:10px 14px 30px}
     <div class="hint">켜면 새 이미지가 있을 때 받을지 물어봅니다<span id="imgSize"></span></div>
   </div>
 
-
-  <div class="sec">
-    <div class="lab">네이버 스토어</div>
-    <button class="b3d" id="btnStore" style="width:100%;display:flex;align-items:center;justify-content:center;min-height:42px" aria-label="네이버 스토어"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5OSAyMCI+PHBhdGggZD0iTTYxLjggMTUuNkg0NXYyLjVoMTYuOHpNNTQuNyAxLjVoLTIuNnY0LjFjMCAxLjMtLjcgMi40LTEuOSAyLjlxLTEuOTUuOS00LjguOVYxMmMyLjMgMCA0LjItLjQgNS45LTEuMi44LS40IDEuNS0uOSAyLjEtMS42LjYuNyAxLjMgMS4yIDIuMSAxLjYgMS43LjggMy42IDEuMSA1LjkgMS4yVjkuNGMtMS45IDAtMy40LS4zLTQuOC0uOS0xLjEtLjUtMS45LTEuNy0xLjktMi45di00Wm0yNS45IDE0LjJ2Mi41SDYzLjh2LTIuNWg3di0yLjRoMi44djIuNHptLTEzLjUtNS41VjguMWgxMi43VjUuOEg2Ni4zYy0xIDAtMS44LjgtMS44IDEuOHYzLjFjMCAxIC44IDEuOCAxLjggMS44aDEzLjV2LTIuM3ptMTIuOC04LjdINjQuNnYyLjNoMTUuM3ptNy41LS4yYy0xLjQgMC0yLjYuNS0zLjQgMS40LS45LjktMS4zIDIuMy0xLjMgNHY2LjJjMCAxLjcuNCAzIDEuMyA0IC45LjkgMiAxLjQgMy40IDEuNHMyLjYtLjUgMy40LTEuNGMuOS0uOSAxLjMtMi4yIDEuMy00VjYuN2MwLTEuNy0uNC0zLjEtMS4zLTRzLTItMS40LTMuNC0xLjRtMi4xIDExLjZjMCAxLS4yIDEuNy0uNiAyLjJzLS45LjctMS42LjctMS4yLS4yLTEuNi0uNy0uNi0xLjItLjYtMi4yVjYuN2MwLTEgLjItMS43LjYtMi4ycy45LS43IDEuNi0uNyAxLjIuMiAxLjYuNy42IDEuMi42IDIuMnptNS44LTExLjd2Ni42aC0yLjV2Mi42aDIuNXY4LjRIOThWMS4yek0zOC4yIDIwSDIwVjBoMTguMmMxIDAgMS44LjggMS44IDEuOHYxNi40YzAgMS0uOCAxLjgtMS44IDEuOCIgc3R5bGU9ImZpbGw6IzczNDZmMyIvPjxwYXRoIGQ9Ik0zNS4zIDguN2gtNHYtNGgtMi43djRoLTR2Mi43aDEwLjd6bS02LjYgM3YzLjZoMi43di0xLjhjMC0xLjMtMS4zLTEuOC0yLjctMS44IiBzdHlsZT0iZmlsbDojZmZmIi8+PHBhdGggZD0iTTEuOCAwSDIwdjIwSDEuOGMtMSAwLTEuOC0uOC0xLjgtMS44VjEuOEMwIC44LjggMCAxLjggMCIgc3R5bGU9ImZpbGw6IzAzYzc1YSIvPjxwYXRoIGQ9Ik0xMS45IDEwLjMgOC4zIDUuMWgtM3Y5LjhoMy4yVjkuN2wzLjYgNS4yaDNWNS4xaC0zLjJ6IiBzdHlsZT0iZmlsbDojZmZmO2ZpbGwtcnVsZTpldmVub2RkIi8+PC9zdmc+" alt="네이버 플러스 스토어" style="height:20px;width:auto;display:block"></button>
-  </div>
 
   <div class="sec" id="admSec" hidden>
     <div class="lab">관리자</div>
@@ -421,7 +423,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.33";
+const VERSION = "1.0.34";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
