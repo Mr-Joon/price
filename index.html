@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.31</title>
+<title>판매가 검색기 v1.0.32</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -81,6 +81,15 @@ body{padding-bottom:env(safe-area-inset-bottom)}
 .b3d.grn{background:var(--green);color:#fff;box-shadow:0 3px 0 var(--green-d),0 4px 8px rgba(0,0,0,.18)}
 .b3d.grn:active{box-shadow:0 0 0 var(--green-d)}
 .b3d.red{color:var(--warn)}
+/* 버튼 색 규칙: 파랑=진행·확인 / 빨강=지우기·막기 / 초록=보내기·허용 / 보라=네이버 보내기 / 회색=취소·보조 */
+.b3d.danger{background:#e03131;color:#fff;box-shadow:0 3px 0 #a51d1d,0 4px 8px rgba(0,0,0,.18)}
+.b3d.danger:active{box-shadow:0 0 0 #a51d1d}
+.b3d.nvg{background:#03c75a;color:#fff;box-shadow:0 3px 0 #02923f,0 4px 8px rgba(0,0,0,.18)}
+.b3d.nvg:active{box-shadow:0 0 0 #02923f}
+.b3d.nvp{background:#7346f3;color:#fff;box-shadow:0 3px 0 #5129c4,0 4px 8px rgba(0,0,0,.18)}
+.b3d.nvp:active{box-shadow:0 0 0 #5129c4}
+/* 닫기 버튼 (모든 창 오른쪽 위, 같은 모양) */
+.b3d.xbtn{font-size:14px;padding:7px 12px;min-height:36px;white-space:nowrap;flex:none}
 .cartBtn{position:relative}
 .badge{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;
   background:var(--warn);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;border:2px solid var(--bg)}
@@ -166,7 +175,9 @@ main{padding:10px 14px 30px}
 /* ===== 대화상자 ===== */
 .dlg{position:fixed;inset:0;z-index:65;background:rgba(0,0,0,.5);display:grid;place-items:center;padding:20px}
 .dlg .box{background:var(--card);color:var(--text);border-radius:16px;padding:18px 16px;width:100%;max-width:380px;max-height:80vh;display:flex;flex-direction:column}
-.dlg h4{margin:0 0 8px;font-size:17px}
+.dlg h4{margin:0;font-size:17px;flex:1}
+.dlg .dhead{display:flex;align-items:center;gap:8px;margin-bottom:8px;min-height:24px}
+.dlg .acts:empty{display:none}
 .dlg .msg{font-size:14px;line-height:1.6;white-space:pre-line;overflow:auto}
 .dlg input{width:100%;font-size:16px;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--text);margin-top:10px;font-family:inherit}
 .dlg .acts{display:grid;grid-auto-flow:column;gap:8px;margin-top:14px}
@@ -191,6 +202,8 @@ main{padding:10px 14px 30px}
   transform:translateY(105%);transition:transform .2s;max-height:88vh;overflow:auto}
 .sheet.show{transform:none}
 .sheet h3{margin:0 0 4px;font-size:17px}
+.sheet .shead{display:flex;align-items:center;gap:8px;position:sticky;top:-18px;margin:-18px -16px 0;padding:14px 16px 8px;background:var(--card);z-index:2}
+.sheet .shead h3{flex:1;margin:0}
 .sheet .sec{margin-top:16px}
 .sheet .lab{font-size:13px;font-weight:800;margin-bottom:8px}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -292,7 +305,7 @@ main{padding:10px 14px 30px}
 <!-- 설정 -->
 <div class="mask" id="mask"></div>
 <div class="sheet" id="sheet">
-  <h3>설정</h3>
+  <div class="shead"><h3>설정</h3><button class="b3d xbtn" id="btnClose">✕ 닫기</button></div>
 
   <div class="sec">
     <div class="lab">화면</div>
@@ -328,12 +341,11 @@ main{padding:10px 14px 30px}
     </div>
   </div>
 
-  <button class="b3d pri full" id="btnClose">닫기</button>
   <div class="hint" id="setInfo" style="text-align:center"></div>
 </div>
 <!-- 관리자: 사용자 관리 -->
 <div class="sheet adm" id="adminSheet">
-  <div class="chd" style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><h3 style="flex:1;margin:0">사용자 관리</h3><button class="b3d icon" id="btnAdmClose" style="width:36px;height:36px;font-size:16px">✕</button></div>
+  <div class="chd" style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><h3 style="flex:1;margin:0">사용자 관리</h3><button class="b3d xbtn" id="btnAdmClose">✕ 닫기</button></div>
   <div class="tools">
     <button class="b3d grn" id="btnAdmAdd">＋ 추가</button>
     <button class="b3d" id="btnAdmRefresh">새로고침</button>
@@ -342,7 +354,7 @@ main{padding:10px 14px 30px}
 </div>
 <!-- 관리자: 앱 공유 -->
 <div class="sheet shr" id="shareSheet">
-  <div class="chd"><h3>앱 공유</h3><button class="b3d icon" id="btnShrClose" style="width:36px;height:36px;font-size:16px">✕</button></div>
+  <div class="chd"><h3>앱 공유</h3><button class="b3d xbtn" id="btnShrClose">✕ 닫기</button></div>
   <div class="qrbox"><img id="qrImg" alt="앱 주소 QR 코드"></div>
   <div class="qurl" id="shrUrl"></div>
   <div class="hint" style="text-align:center">직원 폰 카메라로 QR을 찍으면 바로 열립니다</div>
@@ -353,23 +365,23 @@ main{padding:10px 14px 30px}
 </div>
 <!-- 견적함 -->
 <div class="sheet cart" id="cartSheet">
-  <div class="chd"><h3>견적함 <span class="loaded" id="cartName"></span></h3><button class="b3d icon" id="btnCartClose" style="width:36px;height:36px;font-size:16px">✕</button></div>
+  <div class="chd"><h3>견적함 <span class="loaded" id="cartName"></span></h3><button class="b3d xbtn" id="btnCartClose">✕ 닫기</button></div>
   <div class="clist" id="cartList"></div>
   <div class="cfoot">
     <label class="ship"><input type="checkbox" id="chkShip">택배비 (4,000원) 포함</label>
     <div class="tot"><span>총 결제 금액</span><b id="cartTotal">0 원</b></div>
     <div class="btn3">
-      <button class="b3d red" id="btnClear">비우기</button>
-      <button class="b3d" id="btnQSave">저장</button>
-      <button class="b3d" id="btnQLoad">불러오기</button>
+      <button class="b3d danger" id="btnClear">🗑 비우기</button>
+      <button class="b3d" id="btnQSave">💾 저장</button>
+      <button class="b3d" id="btnQLoad">📂 불러오기</button>
     </div>
     <div class="btn2">
-      <button class="b3d grn" id="btnShare">카톡/문자로 보내기</button>
-      <button class="b3d" id="btnCopy">복사</button>
+      <button class="b3d grn" id="btnShare">📤 카톡/문자로 보내기</button>
+      <button class="b3d" id="btnCopy">📋 복사</button>
     </div>
   </div>
 </div>
-<div class="dlg" id="dlg" hidden><div class="box"><h4 id="dlgTitle"></h4><div class="msg" id="dlgMsg"></div><input id="dlgInput" hidden><div class="qlist" id="dlgList" hidden></div><div class="acts" id="dlgActs"></div></div></div>
+<div class="dlg" id="dlg" hidden><div class="box"><div class="dhead"><h4 id="dlgTitle"></h4><button class="b3d xbtn" id="dlgX" hidden>✕ 닫기</button></div><div class="msg" id="dlgMsg"></div><input id="dlgInput" hidden><div class="qlist" id="dlgList" hidden></div><div class="acts" id="dlgActs"></div></div></div>
 <div class="viewer" id="viewer" hidden><div><img id="viewImg" alt=""><div id="viewName"></div></div></div>
 <div class="lock" id="lock" hidden>
   <div class="lbox">
@@ -409,7 +421,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.31";
+const VERSION = "1.0.32";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
@@ -801,7 +813,7 @@ document.querySelectorAll("#segImg .b3d").forEach(b => b.onclick = async () => {
   if (!(imgMeta && imgMeta.count) || imgBusy) return;
   const size = imgMeta.size ? `, 약 ${mb(imgMeta.size)}` : "";
   const r = await dialog({ title: "이미지 끄기", msg: `저장된 이미지(${imgMeta.count}장${size})도 삭제할까요?\n\n보관하면 다시 켤 때 바로 보입니다.`,
-    buttons: [["보관", null], ["삭제", "ok", "pri"]] });
+    buttons: [["보관", null], ["삭제", "ok", "danger"]] });
   if (!r || r.btn !== "ok") return;
   await idbClear(); setImgUrls(new Map());
   imgMeta = null; lsDel(LS.imgMeta);
@@ -1357,7 +1369,7 @@ $("btnCart").onclick = openCart;
 $("btnCartClose").onclick = closeSheet;
 $("btnClear").onclick = async () => {
   if (!cart.entries.length) return;
-  const r = await dialog({ title: "비우기", msg: "견적함을 모두 비울까요?", buttons: [["취소", null], ["비우기", "ok", "pri"]] });
+  const r = await dialog({ title: "비우기", msg: "견적함을 모두 비울까요?", buttons: [["취소", null], ["비우기", "ok", "danger"]] });
   if (!r || r.btn !== "ok") return;
   cart.entries = []; cart.loadedName = null; saveCart(); renderCart();
 };
@@ -1419,7 +1431,7 @@ $("btnQSave").onclick = async () => {
   if (!name){ toast("이름을 입력하세요"); return; }
   const qs = getQuotes();
   if (qs[name]){
-    const o = await dialog({ title: "덮어쓰기 확인", msg: `'${name}' 이름으로 이미 저장된 견적이 있습니다.\n덮어쓸까요?`, buttons: [["취소", null], ["덮어쓰기", "ok", "pri"]] });
+    const o = await dialog({ title: "덮어쓰기 확인", msg: `'${name}' 이름으로 이미 저장된 견적이 있습니다.\n덮어쓸까요?`, buttons: [["취소", null], ["덮어쓰기", "ok", "danger"]] });
     if (!o || o.btn !== "ok") return;
     delete qs[name];
   }
@@ -1434,10 +1446,10 @@ $("btnQLoad").onclick = async () => {
     const qs = getQuotes();
     const names = Object.keys(qs).sort((a, b) => String(qs[b].saved_at).localeCompare(String(qs[a].saved_at)));   // 최근 저장한 것이 위로
     if (!names.length){ toast("저장된 견적이 없습니다"); return; }
-    const r = await dialog({ title: "견적 불러오기", list: names.map(n => ({ name: n, sub: `${qs[n].saved_at || ""} · ${(qs[n].items || []).length}개 제품` })), buttons: [["닫기", null]] });
+    const r = await dialog({ title: "견적 불러오기", list: names.map(n => ({ name: n, sub: `${qs[n].saved_at || ""} · ${(qs[n].items || []).length}개 제품` })), close: true, buttons: [] });
     if (!r || !r.btn) return;
     if (r.btn === "del"){
-      const c = await dialog({ title: "삭제 확인", msg: `'${r.name}' 저장 견적을 삭제할까요?`, buttons: [["취소", null], ["삭제", "ok", "pri"]] });
+      const c = await dialog({ title: "삭제 확인", msg: `'${r.name}' 저장 견적을 삭제할까요?`, buttons: [["취소", null], ["삭제", "ok", "danger"]] });
       if (c && c.btn === "ok"){ delete qs[r.name]; lsSet(LS_QUOTES, qs); }
       continue;
     }
@@ -1479,6 +1491,7 @@ function showDialog(o){
   return new Promise(resolve => {
     const d = $("dlg"), inp = $("dlgInput"), lst = $("dlgList"), acts = $("dlgActs");
     $("dlgTitle").textContent = o.title || "";
+    $("dlgX").hidden = !o.close;   // close: 오른쪽 위 [✕ 닫기] (안내·선택 창)
     $("dlgMsg").textContent = o.msg || ""; $("dlgMsg").hidden = !o.msg;
     inp.hidden = !o.input; lst.hidden = !o.list;
     if (o.input){ inp.value = o.input.value || ""; inp.inputMode = o.input.numeric ? "numeric" : "text"; inp.type = "text"; }
@@ -1496,7 +1509,8 @@ function showDialog(o){
       lst.onclick = ev => { const b = ev.target.closest("[data-l]"); if (b) done({ btn: b.dataset.l, name: o.list[+b.dataset.i].name }); };
     }
     acts.innerHTML = ""; acts.classList.toggle("col", !!o.stack);   // stack: 버튼을 세로로
-    for (const [label, val, cls, href] of o.buttons || [["확인", null]]){
+    $("dlgX").onclick = () => done(null);
+    for (const [label, val, cls, href] of o.buttons || (o.close ? [] : [["확인", null]])){
       // href가 있으면 링크 버튼 (아이폰 등에서 팝업 차단 없이 바로 열리도록 진짜 링크로 만듦)
       const b = document.createElement(href ? "a" : "button"); b.className = "b3d" + (cls ? " " + cls : ""); b.textContent = label;
       if (href){ b.href = href; b.target = "_blank"; b.rel = "noopener"; b.style.textAlign = "center"; b.style.textDecoration = "none"; }
@@ -1764,7 +1778,7 @@ async function askSameName(id, name){
   const msg = `${String(name).trim()}\n${lines}\n\n새 기기: ${id}`
     + (canReplace ? "\n\n폰을 바꿨다면 기존 기기를 삭제하세요.\n(기존 기기는 사용 중지·데이터 삭제)" : "");
   const buttons = canReplace
-    ? [["기존 기기 삭제 후 허용", "replace", "pri"], ["둘 다 사용", "both"], ["취소", null]]
+    ? [["기존 기기 삭제 후 허용", "replace", "danger"], ["둘 다 사용", "both", "pri"], ["취소", null]]
     : [["취소", null], ["둘 다 사용", "both", "pri"]];
   const r = await dialog({ title: "같은 이름의 기기가 있습니다", msg, buttons, stack: canReplace });
   if (!r || !r.btn) return null;
@@ -1786,10 +1800,10 @@ function renderAdminList(){
     const same = cnt.get(nameKey(u.name)) || 0;
     const me = normId(u.id) === normId(DEVICE_ID);
     let btns = "";
-    if (cls === "wait") btns = `<button class="b3d grn" data-a="O" data-id="${esc(u.id)}">허용</button><button class="b3d red" data-a="X" data-id="${esc(u.id)}">거절</button>`;
-    else if (cls === "ok") btns = `<button class="b3d red" data-a="X" data-id="${esc(u.id)}">차단</button>`;
+    if (cls === "wait") btns = `<button class="b3d grn" data-a="O" data-id="${esc(u.id)}">허용</button><button class="b3d danger" data-a="X" data-id="${esc(u.id)}">거절</button>`;
+    else if (cls === "ok") btns = `<button class="b3d danger" data-a="X" data-id="${esc(u.id)}">차단</button>`;
     else if (cls === "no") btns = `<button class="b3d grn" data-a="O" data-id="${esc(u.id)}">허용</button>`;
-    if (cls !== "boss") btns += `<button class="b3d" data-a="del" data-id="${esc(u.id)}">삭제</button>`;
+    if (cls !== "boss") btns += `<button class="b3d red" data-a="del" data-id="${esc(u.id)}">삭제</button>`;
     return `<div class="urow">
       <div class="u1"><div class="nm">${esc(u.name || "(이름 없음)")}${me ? " (이 폰)" : ""}</div>${same > 1 ? `<span class="st same">같은 이름 ${same}대</span>` : ""}<span class="st ${cls}">${label}</span></div>
       <div class="id">${esc(u.id)}${u.time ? " · " + esc(u.time) : ""}</div>
@@ -1825,7 +1839,7 @@ $("admList").addEventListener("click", async ev => {
   if (act === "X" || act === "del"){
     const msg = act === "X" ? `${who}\n\n차단하면 그 폰의 가격표·이미지·견적이 삭제됩니다.\n차단할까요?`
                             : `${who}\n\n명단에서 삭제할까요?\n(삭제해도 차단과 같이 그 폰의 데이터가 삭제됩니다)`;
-    const r = await dialog({ title: act === "X" ? "차단" : "삭제", msg, buttons: [["취소", null], [act === "X" ? "차단" : "삭제", "ok", "pri"]] });
+    const r = await dialog({ title: act === "X" ? "차단" : "삭제", msg, buttons: [["취소", null], [act === "X" ? "차단" : "삭제", "ok", "danger"]] });
     if (!r || r.btn !== "ok") return;
   }
   let plan = null;
@@ -1849,7 +1863,7 @@ $("btnAdmAdd").onclick = async () => {
     return;
   }
   const id = raw.slice(0, 4) + "-" + raw.slice(4);
-  const r2 = await dialog({ title: "사용자 추가", msg: `${id}\n이름을 입력하세요`, input: { value: "" }, buttons: [["취소", null], ["허용으로 추가", "ok", "pri"]] });
+  const r2 = await dialog({ title: "사용자 추가", msg: `${id}\n이름을 입력하세요`, input: { value: "" }, buttons: [["취소", null], ["허용으로 추가", "ok", "grn"]] });
   if (!r2 || r2.btn !== "ok") return;
   const name = String(r2.value || "").trim();
   const cur = adminUsers.find(x => x.id === id);
@@ -1865,7 +1879,7 @@ $("btnAdmAdd").onclick = async () => {
     const u = j.user || {};
     const [label, cls] = statusOf(u.status);
     if (cls === "boss"){ toast("관리자 기기는 시트에서 직접 변경하세요"); return; }
-    const r3 = await dialog({ title: "이미 등록된 기기", msg: `${id}\n${u.name || "(이름 없음)"} · ${label}\n\n허용으로 바꿀까요?${name && name !== u.name ? `\n(이름: ${u.name || "없음"} → ${name})` : ""}`, buttons: [["취소", null], ["허용", "ok", "pri"]] });
+    const r3 = await dialog({ title: "이미 등록된 기기", msg: `${id}\n${u.name || "(이름 없음)"} · ${label}\n\n허용으로 바꿀까요?${name && name !== u.name ? `\n(이름: ${u.name || "없음"} → ${name})` : ""}`, buttons: [["취소", null], ["허용", "ok", "grn"]] });
     if (!r3 || r3.btn !== "ok") return;
     j = await adminCall({ action: "add", id, name, overwrite: true });
     if (j) await finish("허용했습니다");
@@ -1957,7 +1971,7 @@ $("btnOpenExt").onclick = () => { location.href = "kakaotalk://web/openExternal?
 const STORE_URL = "https://brand.naver.com/hpt";
 $("btnStore").onclick = async () => {
   const r = await dialog({ title: "네이버 스토어", msg: STORE_URL,
-    buttons: [["사이트 이동", "go", "pri", STORE_URL], ["보내기", "send"], ["복사", "copy"], ["닫기", null]], stack: true });
+    buttons: [["🌐 사이트 이동", "go", "nvg", STORE_URL], ["📤 보내기", "send", "nvp"], ["📋 복사", "copy"]], stack: true, close: true });
   if (!r || !r.btn || r.btn === "go") return;   // 사이트 이동은 링크 버튼이 직접 엶
   if (r.btn === "send" && navigator.share){
     try{ await navigator.share({ text: `HPT 네이버 브랜드스토어\n${STORE_URL}` }); return; }
