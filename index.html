@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.38</title>
+<title>판매가 검색기 v1.0.39</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -152,12 +152,15 @@ main{padding:10px 14px 30px}
 .link.hpt{padding:6px 8px}
 .link.hpt::before{content:"";display:block;width:48px;height:10px;background:var(--logo);
   -webkit-mask:var(--logo-img) center/contain no-repeat;mask:var(--logo-img) center/contain no-repeat}   /* HPT 홈페이지 상세 = 로고 */
+.manb{padding:6px 8px}
+.manb::before{content:"";display:block;width:48px;height:8px;background:var(--logo);
+  -webkit-mask:url("data:image/png;base64,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") center/contain no-repeat;mask:url("data:image/png;base64,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") center/contain no-repeat}   /* 매뉴얼 PDF 열기 */
 .nvs{display:inline-flex;align-items:center;justify-content:center;padding:6px 8px;text-decoration:none}
 .nvs::before{content:"";display:block;width:28px;height:14px;background:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCAyMCI+PHBhdGggZD0iTTYxLjggMTUuNkg0NXYyLjVoMTYuOHpNNTQuNyAxLjVoLTIuNnY0LjFjMCAxLjMtLjcgMi40LTEuOSAyLjlxLTEuOTUuOS00LjguOVYxMmMyLjMgMCA0LjItLjQgNS45LTEuMi44LS40IDEuNS0uOSAyLjEtMS42LjYuNyAxLjMgMS4yIDIuMSAxLjYgMS43LjggMy42IDEuMSA1LjkgMS4yVjkuNGMtMS45IDAtMy40LS4zLTQuOC0uOS0xLjEtLjUtMS45LTEuNy0xLjktMi45di00Wm0yNS45IDE0LjJ2Mi41SDYzLjh2LTIuNWg3di0yLjRoMi44djIuNHptLTEzLjUtNS41VjguMWgxMi43VjUuOEg2Ni4zYy0xIDAtMS44LjgtMS44IDEuOHYzLjFjMCAxIC44IDEuOCAxLjggMS44aDEzLjV2LTIuM3ptMTIuOC04LjdINjQuNnYyLjNoMTUuM3ptNy41LS4yYy0xLjQgMC0yLjYuNS0zLjQgMS40LS45LjktMS4zIDIuMy0xLjMgNHY2LjJjMCAxLjcuNCAzIDEuMyA0IC45LjkgMiAxLjQgMy40IDEuNHMyLjYtLjUgMy40LTEuNGMuOS0uOSAxLjMtMi4yIDEuMy00VjYuN2MwLTEuNy0uNC0zLjEtMS4zLTRzLTItMS40LTMuNC0xLjRtMi4xIDExLjZjMCAxLS4yIDEuNy0uNiAyLjJzLS45LjctMS42LjctMS4yLS4yLTEuNi0uNy0uNi0xLjItLjYtMi4yVjYuN2MwLTEgLjItMS43LjYtMi4ycy45LS43IDEuNi0uNyAxLjIuMiAxLjYuNy42IDEuMi42IDIuMnptNS44LTExLjd2Ni42aC0yLjV2Mi42aDIuNXY4LjRIOThWMS4yek0zOC4yIDIwSDIwVjBoMTguMmMxIDAgMS44LjggMS44IDEuOHYxNi40YzAgMS0uOCAxLjgtMS44IDEuOCIgc3R5bGU9ImZpbGw6IzczNDZmMyIvPjxwYXRoIGQ9Ik0zNS4zIDguN2gtNHYtNGgtMi43djRoLTR2Mi43aDEwLjd6bS02LjYgM3YzLjZoMi43di0xLjhjMC0xLjMtMS4zLTEuOC0yLjctMS44IiBzdHlsZT0iZmlsbDojZmZmIi8+PHBhdGggZD0iTTEuOCAwSDIwdjIwSDEuOGMtMSAwLTEuOC0uOC0xLjgtMS44VjEuOEMwIC44LjggMCAxLjggMCIgc3R5bGU9ImZpbGw6IzAzYzc1YSIvPjxwYXRoIGQ9Ik0xMS45IDEwLjMgOC4zIDUuMWgtM3Y5LjhoMy4yVjkuN2wzLjYgNS4yaDNWNS4xaC0zLjJ6IiBzdHlsZT0iZmlsbDojZmZmO2ZpbGwtcnVsZTpldmVub2RkIi8+PC9zdmc+") center/contain no-repeat}
 .d.higher{color:var(--warn)} .d.lower{color:var(--ok)} .d.same,.d.muted{color:var(--sub)}
 .meta{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--sub);flex-wrap:wrap}
 .memo{background:var(--chip);border-radius:6px;padding:2px 7px;color:var(--text)}
-.cacts{margin-left:auto;display:flex;gap:6px}   /* 카드 오른쪽 버튼 묶음: [🔗 상세] [＋ 담기] */
+.cacts{margin-left:auto;display:flex;gap:6px}   /* 카드 오른쪽 버튼 묶음: [MANUAL] [HPT] [N+] [＋ 담기] */
 .link{display:inline-flex;align-items:center;text-decoration:none;color:var(--text);font-size:13px;padding:6px 10px}
 .add{font-size:13px;padding:6px 10px}
 
@@ -206,6 +209,17 @@ main{padding:10px 14px 30px}
 .qitem .b3d{font-size:13px;padding:7px 10px}
 
 /* ===== 이미지 크게 보기 ===== */
+/* 매뉴얼 PDF 보기 */
+.pdfv{position:fixed;inset:0;z-index:72;background:var(--bg);display:flex;flex-direction:column}
+.pdfv[hidden]{display:none}
+.pdfv .ph{display:flex;align-items:center;gap:6px;padding:8px 10px;padding-top:calc(8px + env(safe-area-inset-top));background:var(--card);border-bottom:1px solid var(--line)}
+.pdfv .pt{flex:1;min-width:0;font-weight:800;font-size:14px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pdfv .pn{font-size:12px;color:var(--sub);white-space:nowrap}
+.pdfv .zb{width:36px;height:36px;padding:0;font-size:18px;font-weight:800;flex:none}
+.pdfv .pb{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:10px 0 calc(10px + env(safe-area-inset-bottom))}
+.pdfv .pg{margin:0 auto 10px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.25);position:relative}
+.pdfv .pg canvas{display:block;width:100%;height:100%}
+.pdfv .pmsg{color:var(--sub);text-align:center;padding:40px 16px;font-size:14px}
 .viewer{position:fixed;inset:0;z-index:70;background:var(--bg);display:grid;place-items:center;padding:24px}
 .viewer img{display:block;max-width:100%;max-height:70vh;background:var(--thumb);border:1.5px solid var(--line);border-radius:14px;padding:10px;margin:0 auto}
 .viewer div{color:var(--text);font-weight:800;font-size:17px;margin-top:12px;text-align:center}
@@ -345,6 +359,16 @@ main{padding:10px 14px 30px}
     <div class="hint">켜면 새 이미지가 있을 때 받을지 물어봅니다<span id="imgSize"></span></div>
   </div>
 
+  <div class="sec">
+    <div class="lab">매뉴얼 (PDF)</div>
+    <div class="seg" id="segMan">
+      <button class="b3d" data-v="off">끔</button>
+      <button class="b3d" data-v="on">켬</button>
+    </div>
+    <div class="hint" id="manInfo"></div>
+    <div class="hint">켜면 새 매뉴얼이 있을 때 받을지 물어봅니다<span id="manSize"></span></div>
+  </div>
+
 
   <div class="sec" id="admSec" hidden>
     <div class="lab">관리자</div>
@@ -395,6 +419,15 @@ main{padding:10px 14px 30px}
   </div>
 </div>
 <div class="dlg" id="dlg" hidden><div class="box"><div class="dhead"><h4 id="dlgTitle"></h4><button class="b3d xbtn" id="dlgX" hidden>✕ 닫기</button></div><div class="msg" id="dlgMsg"></div><input id="dlgInput" hidden><div class="qlist" id="dlgList" hidden></div><div class="acts" id="dlgActs"></div></div></div>
+<div class="pdfv" id="pdfv" hidden>
+  <div class="ph">
+    <div class="pt" id="pdfTitle"></div><span class="pn" id="pdfPage"></span>
+    <button class="b3d zb" id="pdfOut" aria-label="축소">−</button>
+    <button class="b3d zb" id="pdfIn" aria-label="확대">＋</button>
+    <button class="b3d xbtn" id="pdfClose">✕ 닫기</button>
+  </div>
+  <div class="pb" id="pdfBody"></div>
+</div>
 <div class="viewer" id="viewer" hidden><div><img id="viewImg" alt=""><div id="viewName"></div></div></div>
 <div class="lock" id="lock" hidden>
   <div class="lbox">
@@ -434,7 +467,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.38";
+const VERSION = "1.0.39";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
@@ -442,6 +475,8 @@ const IMAGE_ZIP_ID  = "1sfNfJwTvrK8yAlYOOoB__tNHf21VbvG8";        // 제품 이�
 // 버전 확인용 파일 (PC와 동일): 파일 '이름'이 버전 → 이름의 숫자를 바꾸면 PC·모바일 모두 새로 받음
 const DATA_VERSION_FILE_ID  = "1c-aWAHYse78f693bsgOgywJH1iPXuEYD";   // 가격표 버전 (예: data_version01.txt)
 const IMAGE_VERSION_FILE_ID = "1VyPiRp-5xx8pgMGK9SATvOm9-lkE4Nny";   // 이미지 버전
+const MANUAL_ZIP_ID = "1ysRFk2xZz5QPNWR2rq5X_RZFN99qOmrK";          // 매뉴얼 PDF zip
+const MANUAL_VERSION_FILE_ID = "1ZXlzAiICV49fjqgKCRQtgIY_7oXIkrqU";  // 매뉴얼 버전
 const API_KEY       = "AIzaSyAMB2G_RWePWk0q0jddOmxscXNMeC3EuxM";  // mr-joon.github.io 전용 키
 const USER_SHEET_ID = "1_OMhj2bGozo0Q8UGMpFAVLvf5-F3WHrTRM1xGJOYdJA"; // 사용자 명단 구글 시트 (기기번호 | 이름 | 허용)
 const ADMIN_API_URL = "https://script.google.com/macros/s/AKfycbyJSK7whlOX---slUvYsfY-OEQYHkX0GbYp_gWNHskmTE_GQJwhY1cJaifXIkFB8oSb/exec";   // 사용자 관리 Apps Script 웹 앱 주소 (승인 요청·관리자 메뉴)
@@ -452,7 +487,7 @@ const COMPARE_DISPLAY_LIMIT = 3;            // 메인 제품 1개당 비교 제�
 const SHIPPING_FEE = 4000;                  // 택배비 (PC와 동일)
 const SHRINK_RATIO = 0.5;                   // 새 가격표 제품 수가 이전의 이 비율 미만이면 확인 (PC와 동일)
 const IMAGE_EXTS = ["png","gif","jpg","jpeg"];
-const LS = { data:"rps_data2", theme:"rps_theme", imgMode:"rps_img_mode", imgMeta:"rps_img_meta" };
+const LS = { data:"rps_data2", theme:"rps_theme", imgMode:"rps_img_mode", imgMeta:"rps_img_meta", manMode:"rps_man_mode", manMeta:"rps_man_meta" };
 
 // 엑셀 열 번호 (0부터, PC와 동일)
 const COL_MODEL = 1, COL_DESC = 2, COL_BOX = 3, COL_NORMAL = 4, COL_DATE = 5, COL_REWARD = 6, COL_URL = 8;
@@ -607,7 +642,7 @@ let imgMeta = lsGet(LS.imgMeta);                // {version, count, size, savedA
 let imgUrls = new Map();                        // 이미지키 -> blob URL
 let imgBusy = false;
 // 업데이트 안내: 새 버전이 있으면 팝업으로 묻고 [업데이트]를 눌러야 받음
-let pendingUpd = null;      // { data: {from, to, size} | null, img: {from, to, size} | null }
+let pendingUpd = null;      // { data, img, man: {from, to, size} | null }
 // [나중에]를 누른 버전: 이번 실행 동안 다시 묻지 않음
 // sessionStorage에 두어서 폰이 백그라운드 앱을 정리했다가 다시 불러올 때는 유지, 앱을 직접 껐다 켜면 다시 물음
 const SS_DISMISS = "rps_dismiss";
@@ -621,28 +656,38 @@ let imgProgress = "";
 function imageKey(name){ return String(name).replace(/ /g, "").toLowerCase(); }   // PC: 공백 제거 + 소문자
 
 // IndexedDB 도우미
+// 저장소: img = 제품 이미지, pdf = 매뉴얼 (v2에서 pdf 추가)
 function idbOpen(){
   return new Promise((res, rej) => {
-    const r = indexedDB.open("rps-images", 1);
-    r.onupgradeneeded = () => r.result.createObjectStore("img");
-    r.onsuccess = () => res(r.result);
+    const r = indexedDB.open("rps-images", 2);
+    r.onupgradeneeded = () => { for (const s of ["img","pdf"]) if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s); };
+    r.onsuccess = () => { const db = r.result; db.onversionchange = () => db.close(); res(db); };
     r.onerror = () => rej(r.error);
   });
 }
-async function idbReplaceAll(entries){
+async function idbGet(store, key){
+  const db = await idbOpen();
+  try{
+    return await new Promise((res, rej) => {
+      const q = db.transaction(store, "readonly").objectStore(store).get(key);
+      q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error);
+    });
+  }finally{ db.close(); }
+}
+async function idbReplaceAll(entries, store = "img"){
   const db = await idbOpen();
   await new Promise((res, rej) => {
-    const tx = db.transaction("img", "readwrite"), st = tx.objectStore("img");
+    const tx = db.transaction(store, "readwrite"), st = tx.objectStore(store);
     st.clear();
     for (const [k, blob] of entries) st.put(blob, k);
     tx.oncomplete = res; tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error);
   });
   db.close();
 }
-async function idbReadAll(){
+async function idbReadAll(store = "img"){
   const db = await idbOpen();
   const out = await new Promise((res, rej) => {
-    const tx = db.transaction("img", "readonly"), st = tx.objectStore("img");
+    const tx = db.transaction(store, "readonly"), st = tx.objectStore(store);
     const map = new Map();
     const cur = st.openCursor();
     cur.onsuccess = () => { const c = cur.result; if (c){ map.set(c.key, c.value); c.continue(); } else res(map); };
@@ -651,7 +696,7 @@ async function idbReadAll(){
   db.close();
   return out;
 }
-async function idbClear(){ try{ await idbReplaceAll([]); }catch(e){} }
+async function idbClear(store = "img"){ try{ await idbReplaceAll([], store); }catch(e){} }
 
 function setImgUrls(map){
   for (const u of imgUrls.values()) URL.revokeObjectURL(u);
@@ -819,7 +864,7 @@ document.querySelectorAll("#segImg .b3d").forEach(b => b.onclick = async () => {
   updateImgInfo(); render();
   if (imgMode !== "off"){ sync(true); return; }   // 켜면 새 이미지가 있는지 확인 → 팝업 (전에 [나중에] 했어도 다시 물음)
   if (pendingUpd && pendingUpd.img){   // 끄면 이미지 업데이트 안내는 빼기
-    pendingUpd.img = null; if (!pendingUpd.data) pendingUpd = null;
+    pendingUpd.img = null; if (!pendingUpd.data && !pendingUpd.man) pendingUpd = null;
     showPendingState();
   }
   // 끔: 저장된 이미지가 있으면 지울지 물어봄 (지우면 저장 공간 확보, 보관하면 다시 켤 때 바로 보임)
@@ -832,6 +877,258 @@ document.querySelectorAll("#segImg .b3d").forEach(b => b.onclick = async () => {
   imgMeta = null; lsDel(LS.imgMeta);
   updateImgInfo(); render(); toast("이미지를 삭제했습니다");
 });
+
+
+/* =========================================================
+   매뉴얼 PDF (드라이브 zip → IndexedDB → 앱 안에서 보기)
+   - 파일 이름으로 모델과 연결: "HAC-109, HAC-124, HAC-140.pdf" → 3개 모델
+   ========================================================= */
+let manMode = lsGetStr(LS.manMode, "on") === "off" ? "off" : "on";
+let manMeta = lsGet(LS.manMeta);                // {version, count, size, savedAt, names}
+let manBusy = false, manProgress = "";
+const LS_MANSIZE = "rps_man_size";              // 드라이브 매뉴얼 zip 크기 {version, size}
+let manIndex = new Map();                       // 정리된 이름 -> 파일 이름
+const manCache = new Map();                     // 모델명 -> 파일 이름 | null
+
+// 비교용 키: 대문자, 영문·숫자만, 숫자 뒤 N 제거 (HL-3DGN → HL3DG)
+const manKey = t => String(t).toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/(\d)N/g, "$1");
+function buildManIndex(fileNames){
+  const idx = new Map();
+  for (const f of [...fileNames].sort()){
+    if (!/\.pdf$/i.test(f) || f.startsWith(".")) continue;
+    for (const part of f.replace(/\.pdf$/i, "").split(/[,，]/)){
+      const k = manKey(part); if (k && !idx.has(k)) idx.set(k, f);
+    }
+  }
+  return idx;
+}
+function findManual(model){
+  if (manCache.has(model)) return manCache.get(model);
+  const base = (model.replace(/\s*[\(（][^\)）]*[\)）]/g, "").trim()) || model;   // 괄호 (신형) 등 제거
+  const cands = [manKey(base)];
+  const stripped = base.replace(/^[A-Za-z]{2,3}\d{2}\s*-\s*/, "");             // MA20-IW236 → IW236
+  if (stripped !== base) cands.push(manKey(stripped));
+  for (const k of [...cands]) if (k.endsWith("N")) cands.push(k.slice(0, -1));
+  let hit = null;
+  for (const k of cands) if (k && manIndex.has(k)){ hit = manIndex.get(k); break; }
+  manCache.set(model, hit);
+  return hit;
+}
+function rebuildManIndex(){
+  manIndex = buildManIndex((manMeta && manMeta.names) || []);
+  manCache.clear();
+}
+rebuildManIndex();
+
+async function getManualInfo(){
+  const v = await fetchVersion(MANUAL_VERSION_FILE_ID);
+  let c = lsGet(LS_MANSIZE);
+  if (!c || c.version !== v){
+    const z = await driveJson(`${DRIVE}${MANUAL_ZIP_ID}?fields=size&supportsAllDrives=true&key=${API_KEY}`);
+    c = { version: v, size: Number(z.size) || 0 }; lsSet(LS_MANSIZE, c);
+  }
+  updateManSize();
+  return { version: v, size: c.size };
+}
+function updateManSize(){
+  const c = lsGet(LS_MANSIZE);
+  const size = (c && c.size) || (manMeta && manMeta.size) || 0;
+  $("manSize").textContent = size ? ` (현재 약 ${sizeText(size)})` : "";
+}
+function setManProgress(msg){ manProgress = msg; updateManInfo(); }
+
+async function downloadManuals(info){
+  if (manBusy) return;
+  manBusy = true; updateManInfo();
+  try{
+    if (!info) info = await getManualInfo();
+    const zipBlob = await fetchWithProgress(`${DRIVE}${MANUAL_ZIP_ID}?alt=media&supportsAllDrives=true&key=${API_KEY}`, (got, total) => {
+      setManProgress(total ? `받는 중 ${Math.floor(got / total * 100)}% (${mb(got)} / ${mb(total)})` : `받는 중 ${mb(got)}`);
+    });
+    setManProgress("압축 푸는 중…");
+    let zip;
+    try{ zip = await JSZip.loadAsync(zipBlob, { decodeFileName: decodeZipName }); }
+    catch(e){ throw new Error("매뉴얼 파일이 압축 파일(ZIP)이 아닙니다"); }
+    const files = Object.values(zip.files).filter(f => {
+      if (f.dir || f.name.includes("__MACOSX")) return false;
+      const fname = f.name.replace(/\\/g, "/").split("/").pop();
+      return !!fname && !fname.startsWith(".") && /\.pdf$/i.test(fname);
+    });
+    if (!files.length) throw new Error("압축 파일 안에 PDF가 없습니다");
+    const pdfs = new Map();
+    let i = 0;
+    for (const f of files){
+      i++;
+      if (i % 3 === 1) setManProgress(`매뉴얼 정리 중 ${i}/${files.length}`);
+      const fname = f.name.replace(/\\/g, "/").split("/").pop().normalize("NFC");
+      pdfs.set(fname, new Blob([await f.async("uint8array")], { type: "application/pdf" }));
+    }
+    const entries = [...pdfs];
+    await idbReplaceAll(entries, "pdf");
+    manMeta = { version: info.version, count: entries.length, size: Number(info.size) || zipBlob.size, savedAt: Date.now(), names: entries.map(e => e[0]) };
+    lsSet(LS.manMeta, manMeta);
+    rebuildManIndex(); render();
+    toast(`매뉴얼 ${entries.length}개 저장 완료`);
+    loadPdfLib().catch(() => {});   // 보기 프로그램도 미리 받아 둠 (오프라인에서도 열리게)
+  }catch(e){
+    console.warn(e);
+    toast("매뉴얼 받기 실패: " + errText(e));
+    manProgress = "실패: " + errText(e);
+    manBusy = false; updateManInfo(); return;
+  }
+  manBusy = false; manProgress = ""; updateManInfo();
+}
+
+function updateManInfo(){
+  document.querySelectorAll("#segMan .b3d").forEach(b => b.classList.toggle("on", b.dataset.v === manMode));
+  const info = $("manInfo");
+  info.classList.remove("new");
+  if (manBusy || manProgress){ info.textContent = manProgress || "준비 중…"; return; }
+  let s = manMeta && manMeta.count ? `저장된 매뉴얼 ${manMeta.count}개 · ${hhmm(manMeta.savedAt)} 받음` : "저장된 매뉴얼 없음";
+  if (manMode === "off") s += " · 표시 안 함";
+  else if (pendingUpd && pendingUpd.man){
+    s += ` · 새 매뉴얼 있음${pendingUpd.man.size ? " (" + sizeText(pendingUpd.man.size) + ")" : ""} · ☁로 받기`;
+    info.classList.add("new");
+  }
+  info.textContent = s;
+  updateManSize();
+}
+document.querySelectorAll("#segMan .b3d").forEach(b => b.onclick = async () => {
+  const v = b.dataset.v;
+  if (v === manMode) return;
+  manMode = v; lsSetStr(LS.manMode, manMode);
+  updateManInfo(); render();
+  if (manMode !== "off"){ sync(true); return; }
+  if (pendingUpd && pendingUpd.man){
+    pendingUpd.man = null; if (!pendingUpd.data && !pendingUpd.img) pendingUpd = null;
+    showPendingState();
+  }
+  if (!(manMeta && manMeta.count) || manBusy) return;
+  const size = manMeta.size ? `, 약 ${sizeText(manMeta.size)}` : "";
+  const r = await dialog({ title: "매뉴얼 끄기", msg: `저장된 매뉴얼(${manMeta.count}개${size})도 삭제할까요?\n\n보관하면 다시 켤 때 바로 보입니다.`,
+    buttons: [["보관", null], ["삭제", "ok", "danger"]] });
+  if (!r || r.btn !== "ok") return;
+  await idbClear("pdf");
+  manMeta = null; lsDel(LS.manMeta); rebuildManIndex();
+  updateManInfo(); render(); toast("매뉴얼을 삭제했습니다");
+});
+
+/* ---------- PDF 보기 (pdf.js: 처음 열 때만 불러옴) ---------- */
+let pdfLib = null;
+function loadPdfLib(){
+  if (!pdfLib) pdfLib = import("./pdf.min.js").then(m => {
+    m.GlobalWorkerOptions.workerSrc = new URL("pdf.worker.min.js", location.href).href;
+    return m;
+  }).catch(e => { pdfLib = null; throw e; });
+  return pdfLib;
+}
+const pdfv = { doc: null, name: "", zoom: 1, pages: [], obs: null, token: 0, url: "" };
+async function openManual(name){
+  let blob = null;
+  try{ blob = await idbGet("pdf", name); }catch(e){ console.warn(e); }
+  if (!blob){
+    const r = await dialog({ title: "매뉴얼 없음", msg: `${name}\n\n이 폰에 매뉴얼 파일이 없습니다.\n서버에서 다시 받을까요?`,
+      buttons: [["취소", null], ["다시 받기", "ok", "pri"]] });
+    if (r && r.btn === "ok") await downloadManuals();
+    return;
+  }
+  closePdf();
+  const tok = ++pdfv.token;
+  pdfv.name = name; pdfv.zoom = 1;
+  $("pdfTitle").textContent = name.replace(/\.pdf$/i, ""); $("pdfPage").textContent = "";
+  $("pdfBody").innerHTML = `<div class="pmsg">여는 중…</div>`;
+  $("pdfv").hidden = false; pushLayer("pdf");
+  try{
+    const lib = await loadPdfLib();
+    const data = new Uint8Array(await blob.arrayBuffer());
+    const doc = await lib.getDocument({ data, isEvalSupported: false }).promise;
+    if (tok !== pdfv.token){ doc.destroy(); return; }
+    pdfv.doc = doc;
+    const first = await doc.getPage(1);
+    const vp = first.getViewport({ scale: 1 });
+    pdfv.ratio = vp.height / vp.width;
+    buildPdfPages();
+  }catch(e){
+    console.warn(e);
+    if (tok !== pdfv.token) return;
+    pdfv.url = URL.createObjectURL(blob);
+    $("pdfBody").innerHTML = `<div class="pmsg">매뉴얼을 열지 못했습니다<br><small>${esc(errText(e))}</small><br><br>
+      <a class="b3d pri" href="${pdfv.url}" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;padding:10px 16px">다른 앱으로 열기</a></div>`;
+  }
+}
+// 페이지 틀을 먼저 만들고, 화면 근처에 온 페이지만 그림 (메모리 절약)
+function buildPdfPages(){
+  const body = $("pdfBody"), doc = pdfv.doc;
+  if (pdfv.obs) pdfv.obs.disconnect();
+  const w = Math.round((body.clientWidth - 20) * pdfv.zoom);
+  body.innerHTML = "";
+  pdfv.pages = [];
+  for (let n = 1; n <= doc.numPages; n++){
+    const d = document.createElement("div");
+    d.className = "pg"; d.dataset.n = n;
+    d.style.width = w + "px"; d.style.height = Math.round(w * pdfv.ratio) + "px";
+    body.appendChild(d); pdfv.pages.push(d);
+  }
+  pdfv.obs = new IntersectionObserver(ents => {
+    for (const en of ents){
+      if (en.isIntersecting) drawPdfPage(en.target);
+      else if (en.target.firstChild){ en.target.firstChild.width = 0; en.target.innerHTML = ""; en.target._drawn = 0; }   // 멀어진 페이지는 지움
+    }
+  }, { root: body, rootMargin: "800px 0px" });
+  pdfv.pages.forEach(d => pdfv.obs.observe(d));
+  updatePdfPageNo();
+}
+async function drawPdfPage(div){
+  const tok = pdfv.token, zoom = pdfv.zoom;
+  if (div._drawn === zoom) return;
+  div._drawn = zoom;
+  try{
+    const page = await pdfv.doc.getPage(Number(div.dataset.n));
+    if (tok !== pdfv.token || div._drawn !== zoom) return;
+    const w = parseFloat(div.style.width);
+    const base = page.getViewport({ scale: 1 });
+    div.style.height = Math.round(w * base.height / base.width) + "px";   // 페이지마다 크기가 다를 수 있음
+    const css = w / base.width;
+    let scale = css * Math.min(2, window.devicePixelRatio || 1);
+    const maxPx = 5e6;                                                  // 캔버스 한 장 최대 픽셀 (폰 메모리 보호)
+    if (base.width * base.height * scale * scale > maxPx) scale = Math.sqrt(maxPx / (base.width * base.height));
+    const vp = page.getViewport({ scale });
+    const cv = document.createElement("canvas");
+    cv.width = Math.floor(vp.width); cv.height = Math.floor(vp.height);
+    await page.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise;
+    if (tok !== pdfv.token || div._drawn !== zoom){ cv.width = 0; return; }
+    div.innerHTML = ""; div.appendChild(cv);
+  }catch(e){ console.warn("페이지 표시 실패", e); div._drawn = 0; }
+}
+function updatePdfPageNo(){
+  if (!pdfv.doc) return;
+  const body = $("pdfBody"), mid = body.scrollTop + body.clientHeight / 3;
+  let n = 1;
+  for (const d of pdfv.pages){ if (d.offsetTop <= mid) n = Number(d.dataset.n); else break; }
+  $("pdfPage").textContent = `${n}/${pdfv.doc.numPages}`;
+}
+$("pdfBody").addEventListener("scroll", () => { clearTimeout(updatePdfPageNo._t); updatePdfPageNo._t = setTimeout(updatePdfPageNo, 80); }, { passive: true });
+function zoomPdf(step){
+  if (!pdfv.doc) return;
+  const z = Math.min(3, Math.max(1, Math.round((pdfv.zoom + step) * 4) / 4));
+  if (z === pdfv.zoom) return;
+  const body = $("pdfBody"), rel = body.scrollTop / Math.max(1, body.scrollHeight);
+  pdfv.zoom = z; buildPdfPages();
+  body.scrollTop = rel * body.scrollHeight;
+  toast(`${Math.round(z * 100)}%`);
+}
+$("pdfIn").onclick = () => zoomPdf(0.5);
+$("pdfOut").onclick = () => zoomPdf(-0.5);
+$("pdfClose").onclick = () => { if (layers[layers.length - 1] === "pdf") closeLayers(1); else closePdf(); };
+function closePdf(){
+  pdfv.token++;
+  if (pdfv.obs){ pdfv.obs.disconnect(); pdfv.obs = null; }
+  for (const d of pdfv.pages) if (d.firstChild) d.firstChild.width = 0;
+  pdfv.pages = [];
+  if (pdfv.doc){ try{ pdfv.doc.destroy(); }catch(e){} pdfv.doc = null; }
+  if (pdfv.url){ URL.revokeObjectURL(pdfv.url); pdfv.url = ""; }
+  $("pdfBody").innerHTML = ""; $("pdfv").hidden = true;
+}
 
 /* =========================================================
    카드 / 결과 표시 (PC: ProductCard / run_search)
@@ -854,6 +1151,7 @@ function cardHtml(it, mainItem){
   const rd = isCmp ? diffText(it.r, mainItem.r) : null;
   const link = productUrl(it);
   const img = imgMode !== "off" ? imgUrls.get(imageKey(it.model)) : null;
+  const man = manMode === "on" && manIndex.size ? findManual(it.model) : null;
   return `<div class="card${isCmp ? " c" : ""}">
     <div class="chead">
       ${img ? `<img class="thumb" src="${img}" alt="" loading="lazy" data-model="${esc(it.model)}">` : ""}
@@ -870,6 +1168,7 @@ function cardHtml(it, mainItem){
       ${it.box ? `<span>${esc(it.box)}</span>` : ""}
       ${it.memo ? `<span class="memo">${esc(it.memo)}</span>` : ""}
       <span class="cacts">
+        ${man ? `<button class="b3d manb" data-man="${esc(man)}" title="매뉴얼 보기" aria-label="매뉴얼 보기"></button>` : ""}
         ${link ? `<a class="b3d link hpt" href="${esc(link)}" target="_blank" rel="noopener" title="HPT 홈페이지 상세" aria-label="HPT 홈페이지 상세"></a>` : ""}
         <a class="b3d nvs" href="${STORE_SEARCH}${encodeURIComponent(storeQ)}" target="_blank" rel="noopener" title="네이버 스토어에서 찾기" aria-label="네이버 스토어에서 찾기"></a>
         <button class="b3d grn add" data-add="${esc(it.model)}">＋ 담기</button>
@@ -957,6 +1256,8 @@ function render(){
 $("out").addEventListener("click", e => {
   const a = e.target.closest("[data-add]");
   if (a){ addToCart(a.dataset.add); return; }
+  const mb2 = e.target.closest("[data-man]");
+  if (mb2){ openManual(mb2.dataset.man); return; }
   const t = e.target.closest(".thumb"); if (!t) return;
   $("viewImg").src = t.src; $("viewName").textContent = t.dataset.model; $("viewer").hidden = false;
   pushLayer("viewer");
@@ -1107,6 +1408,7 @@ async function sync(manual){
   $("btnSync").disabled = true;
   $("status").classList.remove("tap");
   if (imgProgress && !imgBusy){ imgProgress = ""; updateImgInfo(); }   // 지난번 이미지 실패 문구 지우기
+  if (manProgress && !manBusy){ manProgress = ""; updateManInfo(); }
   let ok = false;
   try{
     if (!items.length){ setStatus("확인 중…"); render(); }
@@ -1118,13 +1420,21 @@ async function sync(manual){
       console.warn("이미지 버전 확인 실패", e);
       if (imgMode === "on"){ imgProgress = "이미지 확인 실패: " + errText(e); updateImgInfo(); }
     }
+    let mn = null;
+    try{ mn = await getManualInfo(); }               // 매뉴얼 확인이 안 돼도 가격표 확인은 계속
+    catch(e){
+      console.warn("매뉴얼 버전 확인 실패", e);
+      if (manMode === "on"){ manProgress = "매뉴얼 확인 실패: " + errText(e); updateManInfo(); }
+    }
     const needData = !items.length || !meta || meta.source !== "drive" || meta.dataVersion !== dv;
     const needImg = imgMode === "on" && !!im && (!imgMeta || !imgMeta.count || imgMeta.version !== im.version);
+    const needMan = manMode === "on" && !!mn && (!manMeta || !manMeta.count || manMeta.version !== mn.version);
     const dsize = needData ? await getDataSize(dv) : 0;
     if (updating) throw { skip: true };   // 확인하는 동안 [업데이트]가 시작됨 → 옛 결과는 버림
-    pendingUpd = (needData || needImg) ? {
+    pendingUpd = (needData || needImg || needMan) ? {
       data: needData ? { from: (meta && meta.dataVersion) || "", to: dv, size: dsize } : null,
       img: needImg ? { from: (imgMeta && imgMeta.count && imgMeta.version) || "", to: im.version, size: im.size } : null,
+      man: needMan ? { from: (manMeta && manMeta.count && manMeta.version) || "", to: mn.version, size: mn.size } : null,
     } : null;
     markChecked(); syncOk(); ok = true;
     if (items.length) showMetaStatus(pendingUpd ? "" : "최신"); else setStatus(pendingUpd ? "" : "데이터 없음", !pendingUpd);
@@ -1158,7 +1468,7 @@ async function getDataSize(ver){
   }
   return c.size;
 }
-function updKey(u){ return u ? `${u.data ? u.data.to : ""}|${u.img ? u.img.to : ""}` : ""; }
+function updKey(u){ return u ? `${u.data ? u.data.to : ""}|${u.img ? u.img.to : ""}|${u.man ? u.man.to : ""}` : ""; }
 // 받을 것이 있으면: ☁에 빨간 점 + 상태줄 "새 데이터 있음" (누르면 안내 팝업)
 function showPendingState(){
   $("syncDot").hidden = !pendingUpd;
@@ -1167,7 +1477,7 @@ function showPendingState(){
     else setStatus("새 데이터 있음 (눌러서 보기)", true);
     $("status").classList.add("tap");
   } else if (!syncErr) $("status").classList.remove("tap");
-  updateImgInfo();
+  updateImgInfo(); updateManInfo();
   if (!items.length) render();
 }
 // 업데이트 안내 팝업: 무엇이 바뀌었는지 + 용량 → [업데이트]를 눌러야 받음
@@ -1181,7 +1491,8 @@ async function askUpdate(){
     const lines = [];
     if (u.data) lines.push(line("가격표", u.data));
     if (u.img) lines.push(line("제품 이미지", u.img));
-    const total = (u.data ? u.data.size || 0 : 0) + (u.img ? u.img.size || 0 : 0);
+    if (u.man) lines.push(line("매뉴얼", u.man));
+    const total = (u.data ? u.data.size || 0 : 0) + (u.img ? u.img.size || 0 : 0) + (u.man ? u.man.size || 0 : 0);
     const first = !items.length;
     const r = await dialog({ title: first ? "가격표 받기" : "업데이트 안내",
       msg: (first ? "가격표가 없습니다. 받을까요?" : "새 데이터가 있습니다.") + "\n\n" + lines.join("\n")
@@ -1198,11 +1509,13 @@ async function applyUpdate(u){
   try{
     if (u.data) await downloadData(u.data.to);
     if (u.img && imgMode === "on") await downloadImages({ version: u.img.to, size: u.img.size });
+    if (u.man && manMode === "on") await downloadManuals({ version: u.man.to, size: u.man.size });
   }finally{ updating = false; $("btnSync").disabled = false; }
   // 받지 못한 것(실패·적용 안 함)만 남김 → 이번 실행 동안은 다시 묻지 않음 (☁로 다시 받기)
   const leftData = u.data && !(meta && meta.dataVersion === u.data.to) ? u.data : null;
   const leftImg = u.img && imgMode === "on" && !(imgMeta && imgMeta.count && imgMeta.version === u.img.to) ? u.img : null;
-  pendingUpd = (leftData || leftImg) ? { data: leftData, img: leftImg } : null;
+  const leftMan = u.man && manMode === "on" && !(manMeta && manMeta.count && manMeta.version === u.man.to) ? u.man : null;
+  pendingUpd = (leftData || leftImg || leftMan) ? { data: leftData, img: leftImg, man: leftMan } : null;
   if (pendingUpd) setDismissed(updKey(pendingUpd));
   else if (items.length) showMetaStatus("최신");
   showPendingState();
@@ -1226,10 +1539,11 @@ async function downloadData(ver){
 /* =========================================================
    뒤로가기 처리: 열린 창을 기록해 두고 뒤로가기 시 위에서부터 닫음
    ========================================================= */
-const layers = [];   // 열린 순서: "sheet" | "cart" | "admin" | "share" | "viewer"
+const layers = [];   // 열린 순서: "sheet" | "cart" | "admin" | "share" | "viewer" | "pdf"
 const LAYER_EL = { sheet: "sheet", cart: "cartSheet", admin: "adminSheet", share: "shareSheet" };
 function hideLayer(name){
   if (name === "viewer") $("viewer").hidden = true;
+  else if (name === "pdf") closePdf();
   else $(LAYER_EL[name] || "sheet").classList.remove("show");
   if (!Object.values(LAYER_EL).some(id => $(id).classList.contains("show"))) $("mask").classList.remove("show");
 }
@@ -1275,7 +1589,7 @@ function historyBackQuiet(){
    설정 시트
    ========================================================= */
 function openSheet(){
-  updateImgInfo();
+  updateImgInfo(); updateManInfo();
   $("setInfo").textContent = `v${VERSION}` + (items.length ? ` · 상품 ${comma(items.length)}개` : "")
     + (meta && meta.syncedAt ? ` · 가격표 받은 시간 ${hhmm(meta.syncedAt)}` : "")
     + (meta && meta.dataVersion ? ` · 가격표 ${verLabel(meta.dataVersion)}` : "")
@@ -1629,6 +1943,8 @@ async function wipeAllData(){
   lsDel(LS.data); lsDel(LS.imgMeta); lsDel(LS_CART); lsDel(LS_QUOTES);
   lsDel(SS_SEARCH); lsDel(SS_SCROLL);
   try{ await idbClear(); }catch(e){}
+  lsDel(LS.manMeta); try{ await idbClear("pdf"); }catch(e){}
+  closePdf(); manMeta = null; rebuildManIndex();
   setImgUrls(new Map()); imgMeta = null; pendingUpd = null; setDismissed(""); $("syncDot").hidden = true;
   items = []; meta = null; indexItems();
   cart = { entries: [], ship: false, loadedName: null }; renderCart();
@@ -1655,7 +1971,7 @@ function showLock(status, info){
   if (canRequest && authState.name && !$("reqName").value) $("reqName").value = authState.name;
   if (!blocked && authState.requested) startLockPolling(); else stopLockPolling();
   if ($("lock").hidden){
-    closeSheet(); $("viewer").hidden = true;
+    closeSheet(); $("viewer").hidden = true; closePdf();
     $("lock").hidden = false;
   }
 }
@@ -2124,7 +2440,7 @@ restoreSearch();
 render();
 restoreScroll();
 renderCart();
-updateImgInfo();
+updateImgInfo(); updateManInfo();
 (async () => {
   if (imgMeta && imgMeta.count) { await loadImagesFromDb(); render(); restoreScroll(); }   // 이미지가 들어간 뒤 위치 다시 맞춤
   sync(false);

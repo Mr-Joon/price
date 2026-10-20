@@ -5,7 +5,7 @@
  *   A: 기기번호 | B: 이름 | C: 허용 | D: 변경 시간
  *   허용 칸 값:  O = 허용 / X = 차단 / 대기(또는 빈칸) = 승인 요청 / 관리자 = 관리자 기기
  *
- * 버전: 앱 v1.0.15용 (사용자 추가 'add' 기능 추가)
+ * 버전: 앱 v1.0.33용 (이름 수식 방지 보강) / v1.0.15 (사용자 추가 'add' 기능)
  *   ※ 코드를 바꾼 뒤에는 배포 → 배포 관리 → ✏ 수정 → 버전: 새 버전 → 배포
  *     (웹 앱 URL은 그대로 유지됩니다)
  *
@@ -135,7 +135,7 @@ function handle_(p) {
         return { ok: false, exists: true, error: '이미 등록된 기기입니다',
                  user: { id: t.id, name: t.name, status: t.status, time: t.time } };
       }
-      const name = cleanName_(p.name) || (t ? t.name : '');   // 이름을 비우면 기존 이름 유지
+      const name = cleanName_(p.name) || cleanName_(t ? t.name : '');   // 이름을 비우면 기존 이름 유지 (다시 저장할 때도 수식 방지 처리)
       if (t) {
         sh.getRange(t.row, 2, 1, 3).setValues([[name, 'O', now_()]]);
       } else {
@@ -149,7 +149,7 @@ function handle_(p) {
       const st = { O: 'O', X: 'X' }[String(p.status)];
       if (!st) return { ok: false, error: '상태 값이 올바르지 않습니다' };
       if (t && isAdmin_(t.status)) return { ok: false, error: '관리자 기기는 시트에서 직접 변경하세요' };
-      const name = cleanName_(p.name) || (t ? t.name : '');   // 이름을 비우면 기존 이름 유지
+      const name = cleanName_(p.name) || cleanName_(t ? t.name : '');   // 이름을 비우면 기존 이름 유지 (다시 저장할 때도 수식 방지 처리)
       if (t) {
         sh.getRange(t.row, 2, 1, 3).setValues([[name, st, now_()]]);
       } else {

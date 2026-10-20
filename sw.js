@@ -1,6 +1,7 @@
 // 판매가 검색기 서비스워커 — 앱 화면을 폰에 저장해 오프라인에서도 실행
 // 버전을 올리면 이전 캐시가 지워지고 새 화면이 적용됩니다.
-const CACHE = "rps-v1.0.38";
+const CACHE = "rps-v1.0.39";
+const LIB_CACHE = "rps-lib-pdfjs-6.2.108";   // 매뉴얼 보기 프로그램(pdf.js): 앱 업데이트 때 지우지 않음 (용량이 커서)
 const SHELL = ["./", "index.html", "xlsx.full.min.js", "jszip.min.js", "qrcode.min.js", "manifest.json", "icon-192.png", "icon-512.png"];
 const NAV_TIMEOUT_MS = 3000;   // 앱을 열 때 3초 안에 응답이 없으면 폰에 저장된 화면으로 바로 열기
 
@@ -13,7 +14,7 @@ self.addEventListener("install", e => {
 
 self.addEventListener("activate", e => {
   e.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE && k !== LIB_CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -36,6 +37,14 @@ self.addEventListener("fetch", e => {
   if (url.pathname.endsWith("/sw.js")) return;                            // 새 버전 확인은 항상 네트워크
 
   const isPage = req.mode === "navigate" || url.pathname.endsWith(".html") || url.pathname.endsWith("/");
+  if (/\/pdf(\.worker)?\.min\.js$/.test(url.pathname)){
+    // 매뉴얼 보기 프로그램: 처음 쓸 때 받아 두고 계속 사용
+    e.respondWith(caches.open(LIB_CACHE).then(c => c.match(req, { ignoreSearch: true }).then(r => r || fetch(req).then(res => {
+      if (res && res.ok) c.put(req, res.clone());
+      return res;
+    }))));
+    return;
+  }
   if (!isPage){
     // 라이브러리, 아이콘: 캐시 우선
     e.respondWith(caches.match(req).then(r => r || fetch(req)));
