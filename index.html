@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.39</title>
+<title>판매가 검색기 v1.0.40</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -207,6 +207,27 @@ main{padding:10px 14px 30px}
 .qitem .t b{display:block;word-break:break-all}
 .qitem .t small{color:var(--sub)}
 .qitem .b3d{font-size:13px;padding:7px 10px}
+
+/* ===== 업데이트 진행 창 ===== */
+.prog{position:fixed;inset:0;z-index:76;background:rgba(0,0,0,.5);display:grid;place-items:center;padding:20px}
+.prog .box{background:var(--card);color:var(--text);border-radius:16px;padding:18px 16px 16px;width:100%;max-width:380px}
+.prog h4{margin:0 0 4px;font-size:17px}
+.prow{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:15px;font-weight:700}
+.prow .pi{width:20px;text-align:center;font-size:16px}
+.prow .pl{flex:1}
+.prow .pp{font-size:13px;font-weight:700;color:var(--sub)}
+.prow.run .pi,.prow.run .pp{color:var(--brand)}
+.prow.done .pi,.prow.done .pp{color:var(--ok)}
+.prow.fail .pi,.prow.fail .pp,.prow.cancel .pi,.prow.cancel .pp{color:var(--warn)}
+.prow.wait,.prow.skip{color:var(--sub)}
+.pbw{height:8px;border-radius:4px;background:var(--chip);margin:7px 0 0 28px;overflow:hidden}
+.pbw i{display:block;height:100%;width:0;background:var(--brand);border-radius:4px;transition:width .25s}
+.ptx{font-size:12px;color:var(--sub);margin:5px 0 0 28px;word-break:keep-all}
+.prow.fail + .ptx{color:var(--warn)}
+.pnote{font-size:12px;color:var(--sub);margin-top:14px;text-align:center;white-space:pre-line;line-height:1.5}
+.prog .acts{display:grid;grid-auto-flow:column;gap:8px;margin-top:12px}
+.topbar{position:fixed;top:0;left:0;right:0;height:4px;z-index:60;background:var(--chip)}
+.topbar i{display:block;height:100%;width:0;background:var(--brand);transition:width .25s}
 
 /* ===== 이미지 크게 보기 ===== */
 /* 매뉴얼 PDF 보기 */
@@ -419,6 +440,13 @@ main{padding:10px 14px 30px}
   </div>
 </div>
 <div class="dlg" id="dlg" hidden><div class="box"><div class="dhead"><h4 id="dlgTitle"></h4><button class="b3d xbtn" id="dlgX" hidden>✕ 닫기</button></div><div class="msg" id="dlgMsg"></div><input id="dlgInput" hidden><div class="qlist" id="dlgList" hidden></div><div class="acts" id="dlgActs"></div></div></div>
+<div class="prog" id="prog" hidden><div class="box">
+  <h4 id="progTitle">업데이트 중</h4>
+  <div id="progList"></div>
+  <div class="pnote" id="progNote">화면을 켜 둔 채 기다려 주세요</div>
+  <div class="acts" id="progActs"></div>
+</div></div>
+<div class="topbar" id="topbar" hidden><i id="topbarFill"></i></div>
 <div class="pdfv" id="pdfv" hidden>
   <div class="ph">
     <div class="pt" id="pdfTitle"></div><span class="pn" id="pdfPage"></span>
@@ -467,7 +495,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.39";
+const VERSION = "1.0.40";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
@@ -799,8 +827,10 @@ async function downloadImages(info){
     const base = DRIVE + IMAGE_ZIP_ID;
     const zipBlob = await fetchWithProgress(`${base}?alt=media&supportsAllDrives=true&key=${API_KEY}`, (got, total) => {
       setImgProgress(total ? `받는 중 ${Math.floor(got / total * 100)}% (${mb(got)} / ${mb(total)})` : `받는 중 ${mb(got)}`);
+      progBytes("img", got, total);
     });
-    setImgProgress("압축 푸는 중…");
+    checkCancel();
+    setImgProgress("압축 푸는 중…"); progSet("img", { text: "압축 푸는 중…", pct: 0 });
     let zip;
     try{ zip = await JSZip.loadAsync(zipBlob, { decodeFileName: decodeZipName }); }
     catch(e){ throw new Error("이미지 파일이 압축 파일(ZIP)이 아닙니다"); }
@@ -815,7 +845,7 @@ async function downloadImages(info){
     let i = 0, fail = 0;
     for (const f of files){
       i++;
-      if (i % 5 === 1) setImgProgress(`이미지 정리 중 ${i}/${files.length}`);
+      if (i % 5 === 1){ checkCancel(); setImgProgress(`이미지 정리 중 ${i}/${files.length}`); progSet("img", { text: `정리 중 ${i}/${files.length}`, pct: i / files.length * 100 }); }
       const fname = f.name.replace(/\\/g, "/").split("/").pop();
       const key = imageKey(fname.replace(/\.[^.]+$/, ""));
       if (names.has(key)) dups.push(`${names.get(key)} ↔ ${fname}`);   // 공백/대소문자만 다른 같은 이름
@@ -826,15 +856,19 @@ async function downloadImages(info){
       }catch(e){ fail++; console.warn("이미지 변환 실패:", fname, e); }
     }
     const entries = [...thumbs];
+    checkCancel(); progSet("img", { text: "저장 중…", pct: 100 });
     await idbReplaceAll(entries);
     imgMeta = { version: info.version, count: entries.length, size: Number(info.size) || zipBlob.size, savedAt: Date.now() };
     lsSet(LS.imgMeta, imgMeta);
     setImgUrls(new Map(entries));
     render();
-    toast(`이미지 ${entries.length}장 저장 완료` + (fail ? ` (${fail}장 실패)` : ""));
+    progSet("img", { state: "done", text: fail ? `${fail}장 실패` : "" });
+    if (!progActive() || fail) toast(`이미지 ${entries.length}장 저장 완료` + (fail ? ` (${fail}장 실패)` : ""));
     if (dups.length) dialog({ title: "이름이 겹치는 이미지", msg: "다음 이미지는 이름이 같아(공백·대소문자 무시) 뒤의 것만 사용됩니다:\n- " + dups.join("\n- "), buttons: [["확인", null, "pri"]] });
   }catch(e){
     console.warn(e);
+    if (e && e.cancel){ progSet("img", { state: "cancel" }); imgProgress = ""; imgBusy = false; updateImgInfo(); return; }
+    progSet("img", { state: "fail", text: errText(e) });
     toast("이미지 받기 실패: " + errText(e));
     imgProgress = "실패: " + errText(e);
     imgBusy = false; updateImgInfo(); return;
@@ -944,8 +978,10 @@ async function downloadManuals(info){
     if (!info) info = await getManualInfo();
     const zipBlob = await fetchWithProgress(`${DRIVE}${MANUAL_ZIP_ID}?alt=media&supportsAllDrives=true&key=${API_KEY}`, (got, total) => {
       setManProgress(total ? `받는 중 ${Math.floor(got / total * 100)}% (${mb(got)} / ${mb(total)})` : `받는 중 ${mb(got)}`);
+      progBytes("man", got, total);
     });
-    setManProgress("압축 푸는 중…");
+    checkCancel();
+    setManProgress("압축 푸는 중…"); progSet("man", { text: "압축 푸는 중…", pct: 0 });
     let zip;
     try{ zip = await JSZip.loadAsync(zipBlob, { decodeFileName: decodeZipName }); }
     catch(e){ throw new Error("매뉴얼 파일이 압축 파일(ZIP)이 아닙니다"); }
@@ -959,19 +995,23 @@ async function downloadManuals(info){
     let i = 0;
     for (const f of files){
       i++;
-      if (i % 3 === 1) setManProgress(`매뉴얼 정리 중 ${i}/${files.length}`);
+      if (i % 3 === 1){ checkCancel(); setManProgress(`매뉴얼 정리 중 ${i}/${files.length}`); progSet("man", { text: `정리 중 ${i}/${files.length}`, pct: i / files.length * 100 }); }
       const fname = f.name.replace(/\\/g, "/").split("/").pop().normalize("NFC");
       pdfs.set(fname, new Blob([await f.async("uint8array")], { type: "application/pdf" }));
     }
     const entries = [...pdfs];
+    checkCancel(); progSet("man", { text: "저장 중…", pct: 100 });
     await idbReplaceAll(entries, "pdf");
     manMeta = { version: info.version, count: entries.length, size: Number(info.size) || zipBlob.size, savedAt: Date.now(), names: entries.map(e => e[0]) };
     lsSet(LS.manMeta, manMeta);
     rebuildManIndex(); render();
-    toast(`매뉴얼 ${entries.length}개 저장 완료`);
+    progSet("man", { state: "done" });
+    if (!progActive()) toast(`매뉴얼 ${entries.length}개 저장 완료`);
     loadPdfLib().catch(() => {});   // 보기 프로그램도 미리 받아 둠 (오프라인에서도 열리게)
   }catch(e){
     console.warn(e);
+    if (e && e.cancel){ progSet("man", { state: "cancel" }); manProgress = ""; manBusy = false; updateManInfo(); return; }
+    progSet("man", { state: "fail", text: errText(e) });
     toast("매뉴얼 받기 실패: " + errText(e));
     manProgress = "실패: " + errText(e);
     manBusy = false; updateManInfo(); return;
@@ -1029,7 +1069,13 @@ async function openManual(name){
   if (!blob){
     const r = await dialog({ title: "매뉴얼 없음", msg: `${name}\n\n이 폰에 매뉴얼 파일이 없습니다.\n서버에서 다시 받을까요?`,
       buttons: [["취소", null], ["다시 받기", "ok", "pri"]] });
-    if (r && r.btn === "ok") await downloadManuals();
+    if (r && r.btn === "ok"){
+      if (updating){ toast("받는 중입니다. 잠시 후 다시 눌러 주세요"); return; }
+      try{
+        const mi = await getManualInfo();
+        await applyUpdate({ man: { from: (manMeta && manMeta.version) || "", to: mi.version, size: mi.size } });
+      }catch(e){ toast("매뉴얼 확인 실패: " + errText(e)); }
+    }
     return;
   }
   closePdf();
@@ -1317,9 +1363,14 @@ function loadCache(){
 }
 // 드라이브 요청 (시간 제한 포함: 신호가 약해 응답이 없으면 무한정 기다리지 않음)
 function timeoutErr(){ const e = new Error("응답 시간 초과 (신호가 약하거나 연결이 끊겼습니다)"); e.kind = "timeout"; return e; }
+function cancelErr(){ const e = new Error("취소했습니다"); e.cancel = true; return e; }
+function checkCancel(){ if (updCtl && updCtl.signal.aborted) throw cancelErr(); }
 async function driveRequest(url, read, ms){
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), ms);
+  const ext = updCtl && updCtl.signal;                                // 업데이트 [취소]를 누르면 받기 중단
+  const onCancel = () => ctl.abort();
+  if (ext){ if (ext.aborted) throw cancelErr(); ext.addEventListener("abort", onCancel); }
   try{
     const r = await fetch(url, { cache:"no-store", signal: ctl.signal });
     if (!r.ok){
@@ -1331,15 +1382,16 @@ async function driveRequest(url, read, ms){
     }
     return await read(r, ctl, timer);
   }catch(e){
+    if (ext && ext.aborted) throw cancelErr();
     if (e && e.name === "AbortError") throw timeoutErr();
     throw e;
-  }finally{ clearTimeout(timer); }
+  }finally{ clearTimeout(timer); if (ext) ext.removeEventListener("abort", onCancel); }
 }
 // 일시적인 오류면 1.5초 뒤 한 번 더 (시간 초과는 이미 오래 기다렸으므로 제외)
 async function driveRequestRetry(url, read, ms){
   try{ return await driveRequest(url, read, ms); }
   catch(e){
-    if (!navigator.onLine || e.kind === "timeout" || !isRetryable(e)) throw e;
+    if (e.cancel || !navigator.onLine || e.kind === "timeout" || !isRetryable(e)) throw e;
     await new Promise(r => setTimeout(r, 1500));
     return driveRequest(url, read, ms);
   }
@@ -1391,6 +1443,7 @@ async function retryNow(){
   toast(syncErr ? "다시 실패: " + syncErr.reason : "확인했습니다");
 }
 $("status").addEventListener("click", () => {
+  if (updating && prog.hidden){ progShow(); return; }   // 숨긴 진행 창 다시 보기
   if (!$("status").classList.contains("tap")) return;
   if (syncErr) retryNow(); else if (pendingUpd) askUpdate();
 });
@@ -1480,6 +1533,130 @@ function showPendingState(){
   updateImgInfo(); updateManInfo();
   if (!items.length) render();
 }
+/* =========================================================
+   업데이트 진행 창: 항목별 상태 + 진행 바 + 남은 시간
+   [숨기기] → 화면 맨 위 얇은 진행 바 + 상태줄 (누르면 다시 보기)
+   ========================================================= */
+let updCtl = null;                 // [취소]용
+const PROG_LABEL = { data: "가격표", img: "제품 이미지", man: "매뉴얼" };
+const PROG_ICON = { wait: "·", run: "◐", done: "✓", fail: "✕", cancel: "✕", skip: "–" };
+const PROG_STATE = { wait: "대기", done: "완료", fail: "실패", cancel: "취소", skip: "건너뜀" };
+const prog = { list: [], hidden: false, finished: false, timer: null, raf: 0 };
+function progActive(){ return prog.list.length > 0 && !prog.finished; }
+function progOpen(keys){
+  clearTimeout(prog.timer);
+  prog.list = keys.map(k => ({ key: k, label: PROG_LABEL[k], state: "wait", pct: 0, text: "" }));
+  prog.hidden = false; prog.finished = false;
+  $("prog").hidden = false;
+  wakeOn(); renderProg();
+}
+function progSet(key, o){
+  const it = prog.list.find(x => x.key === key);
+  if (!it || prog.finished) return;
+  Object.assign(it, o);
+  if (o.state === "run"){ it.t0 = 0; }
+  if (o.state && o.state !== "run" && o.text === undefined) it.text = "";
+  progRender();
+}
+// 받은 용량 → 퍼센트 + "115MB / 254MB · 약 2분 남음"
+function progBytes(key, got, total){
+  const it = prog.list.find(x => x.key === key);
+  if (!it || prog.finished) return;
+  const now = Date.now();
+  if (!it.t0){ it.t0 = now; it.g0 = got; }
+  let s = total ? `${sizeText(got)} / ${sizeText(total)}` : `${sizeText(got)} 받음`;
+  const sec = (now - it.t0) / 1000;
+  if (total && sec >= 2 && got > it.g0){
+    const left = (total - got) / ((got - it.g0) / sec);
+    s += left < 60 ? ` · 약 ${Math.max(1, Math.ceil(left / 10) * 10)}초 남음` : ` · 약 ${Math.ceil(left / 60)}분 남음`;
+  }
+  it.pct = total ? got / total * 100 : 0;
+  it.text = s;
+  progRender();
+}
+function progRender(){ if (!prog.raf) prog.raf = requestAnimationFrame(() => { prog.raf = 0; renderProg(); }); }
+function renderProg(){
+  const cur = prog.list.find(x => x.state === "run");
+  // 진행 창
+  $("progList").innerHTML = prog.list.map(it => {
+    const pct = it.state === "run" ? `${Math.floor(it.pct)}%` : (PROG_STATE[it.state] || "");
+    let s = `<div class="prow ${it.state}"><span class="pi">${PROG_ICON[it.state]}</span><span class="pl">${it.label}</span><span class="pp">${pct}</span></div>`;
+    if (it.state === "run") s += `<div class="pbw"><i style="width:${Math.min(100, it.pct).toFixed(1)}%"></i></div>`;
+    if (it.text) s += `<div class="ptx">${esc(it.text)}</div>`;
+    return s;
+  }).join("");
+  // 숨긴 상태: 맨 위 진행 바 + 상태줄
+  const showBar = prog.hidden && !!cur;
+  $("topbar").hidden = !showBar;
+  if (showBar){
+    $("topbarFill").style.width = Math.min(100, cur.pct).toFixed(1) + "%";
+    setStatus(`${cur.label} 받는 중 ${Math.floor(cur.pct)}% · 눌러서 보기`);
+    $("status").classList.add("tap");
+  }
+  if (prog.finished) return;
+  $("progTitle").textContent = "업데이트 중";
+  $("progNote").textContent = "화면을 켜 둔 채 기다려 주세요\n다른 앱으로 가면 멈출 수 있습니다";
+  progButtons([["취소", "cancel"], ["숨기기", "hide", "pri"]]);
+}
+function progButtons(list){
+  const box = $("progActs"); box.innerHTML = "";
+  for (const [label, act, cls] of list){
+    const b = document.createElement("button");
+    b.className = "b3d" + (cls ? " " + cls : ""); b.textContent = label;
+    b.onclick = () => progAction(act);
+    box.appendChild(b);
+  }
+}
+function progAction(act){
+  if (act === "hide"){ prog.hidden = true; $("prog").hidden = true; renderProg(); }
+  else if (act === "cancel"){
+    if (updCtl) updCtl.abort();
+    for (const it of prog.list) if (it.state === "wait") it.state = "cancel";
+    renderProg();
+  }
+  else if (act === "close") progClose();
+  else if (act === "retry"){ progClose(); if (pendingUpd) applyUpdate(pendingUpd); }
+}
+function progShow(){ prog.hidden = false; $("prog").hidden = false; renderProg(); }
+function progClose(){
+  clearTimeout(prog.timer);
+  $("prog").hidden = true; $("topbar").hidden = true;
+  prog.list = []; prog.finished = false; prog.hidden = false;
+  if (items.length && !syncErr && !updating){ showMetaStatus(pendingUpd ? "" : "최신"); showPendingState(); }
+}
+function progFinish(){
+  if (!prog.list.length) return;
+  renderProg();
+  prog.finished = true;
+  const bad = prog.list.filter(x => x.state === "fail");
+  const cancelled = prog.list.some(x => x.state === "cancel");
+  $("topbar").hidden = true;
+  if (!bad.length && !cancelled){
+    $("progTitle").textContent = "업데이트 완료";
+    $("progNote").textContent = "";
+    progButtons([["확인", "close", "pri"]]);
+    if (prog.hidden){ progClose(); toast("업데이트 완료"); }
+    else prog.timer = setTimeout(progClose, 1500);
+    return;
+  }
+  $("progTitle").textContent = cancelled && !bad.length ? "취소했습니다" : "일부 받지 못했습니다";
+  $("progNote").textContent = "받은 항목은 그대로 사용합니다\n나머지는 ☁ 버튼으로 다시 받을 수 있습니다";
+  progButtons(pendingUpd ? [["닫기", "close"], ["다시 받기", "retry", "pri"]] : [["닫기", "close", "pri"]]);
+  if (prog.hidden) progShow();   // 숨겨 둔 상태에서 실패하면 다시 보여 줌
+}
+// 받는 동안 화면 꺼짐 방지 (지원하는 폰만)
+let wakeLock = null;
+async function wakeOn(){
+  try{
+    if (!("wakeLock" in navigator) || wakeLock || document.hidden) return;
+    const l = await navigator.wakeLock.request("screen");
+    if (!updating){ l.release(); return; }
+    wakeLock = l; l.addEventListener("release", () => { if (wakeLock === l) wakeLock = null; });
+  }catch(e){}
+}
+function wakeOff(){ try{ if (wakeLock) wakeLock.release(); }catch(e){} wakeLock = null; }
+document.addEventListener("visibilitychange", () => { if (!document.hidden && updating) wakeOn(); });   // 앱으로 돌아오면 다시 켬
+
 // 업데이트 안내 팝업: 무엇이 바뀌었는지 + 용량 → [업데이트]를 눌러야 받음
 async function askUpdate(){
   if (askingUpd || updating || !pendingUpd) return;
@@ -1505,17 +1682,28 @@ async function askUpdate(){
 }
 async function applyUpdate(u){
   if (updating) return;
+  const keys = ["data","img","man"].filter(k => u[k] && (k === "data" || (k === "img" ? imgMode === "on" : manMode === "on")));
+  if (!keys.length) return;
+  const prev = pendingUpd || {};
   updating = true; $("btnSync").disabled = true;
+  updCtl = new AbortController();
+  progOpen(keys);
   try{
-    if (u.data) await downloadData(u.data.to);
-    if (u.img && imgMode === "on") await downloadImages({ version: u.img.to, size: u.img.size });
-    if (u.man && manMode === "on") await downloadManuals({ version: u.man.to, size: u.man.size });
-  }finally{ updating = false; $("btnSync").disabled = false; }
-  // 받지 못한 것(실패·적용 안 함)만 남김 → 이번 실행 동안은 다시 묻지 않음 (☁로 다시 받기)
-  const leftData = u.data && !(meta && meta.dataVersion === u.data.to) ? u.data : null;
-  const leftImg = u.img && imgMode === "on" && !(imgMeta && imgMeta.count && imgMeta.version === u.img.to) ? u.img : null;
-  const leftMan = u.man && manMode === "on" && !(manMeta && manMeta.count && manMeta.version === u.man.to) ? u.man : null;
+    for (const k of keys){
+      if (updCtl.signal.aborted){ progSet(k, { state: "cancel" }); continue; }
+      progSet(k, { state: "run", pct: 0, text: "연결 중…" });
+      if (k === "data") await downloadData(u.data.to);
+      else if (k === "img") await downloadImages({ version: u.img.to, size: u.img.size });
+      else await downloadManuals({ version: u.man.to, size: u.man.size });
+    }
+  }finally{ updating = false; updCtl = null; $("btnSync").disabled = false; wakeOff(); }
+  // 받지 못한 것(실패·취소·적용 안 함)만 남김 → 이번 실행 동안은 다시 묻지 않음 (☁로 다시 받기)
+  // 이번에 받지 않은 항목은 원래 안내를 그대로 유지
+  const leftData = u.data ? (!(meta && meta.dataVersion === u.data.to) ? u.data : null) : (prev.data || null);
+  const leftImg = u.img ? (imgMode === "on" && !(imgMeta && imgMeta.count && imgMeta.version === u.img.to) ? u.img : null) : (prev.img || null);
+  const leftMan = u.man ? (manMode === "on" && !(manMeta && manMeta.count && manMeta.version === u.man.to) ? u.man : null) : (prev.man || null);
   pendingUpd = (leftData || leftImg || leftMan) ? { data: leftData, img: leftImg, man: leftMan } : null;
+  progFinish();
   if (pendingUpd) setDismissed(updKey(pendingUpd));
   else if (items.length) showMetaStatus("최신");
   showPendingState();
@@ -1523,13 +1711,23 @@ async function applyUpdate(u){
 async function downloadData(ver){
   setStatus("새 가격표 받는 중…"); if (!items.length) render();
   try{
-    const parsed = parseWorkbook(await driveBuffer(`${DRIVE}${EXCEL_FILE_ID}?alt=media&supportsAllDrives=true&key=${API_KEY}`));
-    if (!(await confirmShrink(parsed))){ if (items.length) showMetaStatus(); toast("새 가격표를 적용하지 않았습니다"); return false; }
+    const blob = await fetchWithProgress(`${DRIVE}${EXCEL_FILE_ID}?alt=media&supportsAllDrives=true&key=${API_KEY}`, (got, total) => progBytes("data", got, total));
+    checkCancel();
+    progSet("data", { text: "정리 중…", pct: 100 });
+    const parsed = parseWorkbook(await blob.arrayBuffer());
+    if (!(await confirmShrink(parsed))){
+      if (items.length) showMetaStatus();
+      progSet("data", { state: "skip", text: "적용 안 함" });
+      toast("새 가격표를 적용하지 않았습니다"); return false;
+    }
     applyData(parsed, { dataVersion: ver, source: "drive" });
-    toast("가격표를 업데이트했습니다");
+    progSet("data", { state: "done" });
+    if (!progActive()) toast("가격표를 업데이트했습니다");
     return true;
   }catch(e){
     console.warn(e);
+    if (e && e.cancel){ progSet("data", { state: "cancel" }); if (items.length) showMetaStatus(); else setStatus("데이터 없음", true); return false; }
+    progSet("data", { state: "fail", text: errText(e) });
     toast("가격표 받기 실패: " + errText(e));
     if (items.length) showMetaStatus(); else setStatus("가격표 받기 실패: " + errText(e), true);
     return false;
