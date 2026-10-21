@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.40</title>
+<title>판매가 검색기 v1.0.41</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -75,6 +75,8 @@ body{padding-bottom:env(safe-area-inset-bottom)}
   transition:transform .05s,box-shadow .05s;font-family:inherit}
 .b3d:active{transform:translateY(3px);box-shadow:0 0 0 var(--btn-d),0 1px 3px rgba(0,0,0,.15)}
 .b3d:disabled{opacity:.5}
+/* 오프라인: 인터넷이 필요한 버튼은 흐리게 (누르면 안내) */
+body.offline .link.hpt,body.offline .nvs,body.offline #btnStore,body.offline #btnSync,body.offline #btnAdmin,body.offline #btnRequest{opacity:.35;filter:grayscale(1)}
 .b3d.pri,.b3d.on{background:var(--brand);color:#fff;box-shadow:0 3px 0 var(--brand-d),0 4px 8px rgba(0,0,0,.18)}
 .b3d.pri:active,.b3d.on:active{box-shadow:0 0 0 var(--brand-d)}
 .icon{width:40px;height:40px;padding:0;font-size:19px;display:grid;place-items:center;flex:none}
@@ -495,7 +497,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.40";
+const VERSION = "1.0.41";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
@@ -1325,7 +1327,7 @@ function whenText(ts){
 function showMetaStatus(extra, mode){
   if (!meta){ setStatus("데이터 없음", true); return; }
   let m = `${meta.dataDate ? meta.dataDate + " 기준 · " : ""}${comma(items.length)}개`;
-  if (mode === "pend") m += ` · ${extra}`;   // 새 데이터 있음 (짧게 한 줄)
+  if (mode === "pend" || mode === "off") m += ` · ${extra}`;   // 새 데이터 있음 / 오프라인 (짧게 한 줄)
   else if (mode === "fail") m += ` · ${extra || "확인 실패"}` + (meta.checkedAt ? ` (${whenText(meta.checkedAt)})` : "");
   else m += ` · 확인 ${whenText(meta.checkedAt || meta.syncedAt)}` + (extra ? " " + extra : "");
   setStatus(m, mode === "warn" || mode === "fail" || mode === "pend");
@@ -1421,19 +1423,52 @@ const driveBuffer = url => driveRequestRetry(url, r => r.arrayBuffer(), 30000); 
 const RETRY_DELAYS = [10000, 30000, 60000];
 let syncErr = null, retryStep = 0, retryTimer = null;
 function clearRetry(){ if (retryTimer){ clearTimeout(retryTimer); retryTimer = null; } }
-function syncOk(){ syncErr = null; retryStep = 0; clearRetry(); $("status").classList.remove("tap"); }
+function syncOk(){ syncErr = null; retryStep = 0; clearRetry(); $("status").classList.remove("tap"); setOffline(false); }
 function syncFail(e){
   const info = errInfo(e);
   syncErr = info; clearRetry();
   if (info.retry && retryStep < RETRY_DELAYS.length){
     retryTimer = setTimeout(() => { retryTimer = null; if (!document.hidden) sync(false); }, RETRY_DELAYS[retryStep++]);
   }
+  if (!navigator.onLine || e instanceof TypeError){ setOffline(true); showOfflineStatus(); return; }   // 인터넷 연결 없음
   const tail = retryTimer ? "재시도 중" : "눌러서 재시도";
   if (items.length) showMetaStatus(`${info.reason} · ${tail}`, "fail");
   else setStatus(`${info.reason} · ${tail}`, true);
   $("status").classList.add("tap");
   if (!items.length) render();
 }
+/* ---------- 오프라인 표시 ---------- */
+// 폰이 '연결 없음'을 알려 줄 때 + 와이파이는 붙었지만 실제 인터넷이 안 될 때(드라이브 연결 실패) 모두 오프라인으로 표시
+let offline = false;
+function setOffline(v){
+  v = !!v;
+  if (v === offline) return;
+  offline = v;
+  document.body.classList.toggle("offline", v);
+  if (!v) toast("인터넷 연결됨");
+}
+function showOfflineStatus(){
+  if (items.length) showMetaStatus("📴 오프라인 (저장된 가격표)", "off");
+  else setStatus("📴 오프라인 · 인터넷 연결 후 가격표를 받을 수 있습니다", true);
+  $("status").classList.add("tap");   // 누르면 다시 확인
+  if (!items.length) render();
+}
+// 오프라인일 때 인터넷이 필요한 버튼: 동작 대신 안내
+window.addEventListener("click", e => {
+  if (!offline) return;
+  const t = e.target.closest(".link.hpt, .nvs, #btnStore, #btnSync, #btnAdmin, #btnRequest");
+  if (!t) return;
+  e.preventDefault(); e.stopPropagation();
+  toast(t.id === "btnSync" ? "오프라인입니다 · 상태줄을 누르면 다시 확인합니다" : "인터넷 연결 후 사용할 수 있습니다");
+}, true);
+window.addEventListener("offline", () => {
+  setOffline(true);
+  if (syncing || updating) return;   // 진행 중이면 그 결과(실패)로 표시
+  syncErr = { reason: "인터넷 연결 없음", retry: false }; clearRetry();
+  showOfflineStatus();
+});
+if (!navigator.onLine) setOffline(true);
+
 // 빨간 글씨(또는 빈 화면의 [다시 받기])를 누르면 바로 다시 시도
 async function retryNow(){
   if (syncing){ toast("확인 중입니다"); return; }
