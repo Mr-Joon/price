@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.41</title>
+<title>판매가 검색기 v1.0.42</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -266,7 +266,7 @@ main{padding:10px 14px 30px}
 .sheet .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .sheet .full{width:100%;margin-top:18px}
 /* ===== 잠금 화면 (승인 필요 / 사용 중지) ===== */
-.lock{position:fixed;inset:0;z-index:75;background:var(--bg);display:grid;place-items:center;padding:24px;overflow:auto}
+.lock{position:fixed;inset:0;z-index:77;background:var(--bg);display:grid;place-items:center;padding:24px;overflow:auto}
 .lock .lbox{width:100%;max-width:360px;text-align:center}
 .lock .lic{font-size:44px;margin-bottom:6px}
 .lock h2{margin:0 0 8px;font-size:21px}
@@ -497,7 +497,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.41";
+const VERSION = "1.0.42";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
@@ -689,11 +689,30 @@ function imageKey(name){ return String(name).replace(/ /g, "").toLowerCase(); } 
 // 저장소: img = 제품 이미지, pdf = 매뉴얼 (v2에서 pdf 추가)
 function idbOpen(){
   return new Promise((res, rej) => {
+    let done = false;
     const r = indexedDB.open("rps-images", 2);
     r.onupgradeneeded = () => { for (const s of ["img","pdf"]) if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s); };
-    r.onsuccess = () => { const db = r.result; db.onversionchange = () => db.close(); res(db); };
-    r.onerror = () => rej(r.error);
+    r.onsuccess = () => {
+      const db = r.result; db.onversionchange = () => db.close();
+      if (done){ db.close(); return; }   // 이미 시간 초과로 끝난 요청
+      done = true; res(db);
+    };
+    r.onerror = () => { if (!done){ done = true; rej(r.error); } };
+    // 예전 버전 앱 창이 열려 있으면 저장소 준비가 막힐 수 있음 → 무한정 기다리지 않음
+    r.onblocked = () => setTimeout(() => {
+      if (!done){ done = true; rej(new Error("다른 창에 예전 버전 앱이 열려 있습니다. 모두 닫고 다시 시도해 주세요")); }
+    }, 5000);
   });
+}
+async function idbPut(store, key, val){
+  const db = await idbOpen();
+  try{
+    await new Promise((res, rej) => {
+      const tx = db.transaction(store, "readwrite");
+      tx.objectStore(store).put(val, key);
+      tx.oncomplete = res; tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error);
+    });
+  }finally{ db.close(); }
 }
 async function idbGet(store, key){
   const db = await idbOpen();
@@ -824,6 +843,7 @@ function updateImgSize(){
 async function downloadImages(info){
   if (imgBusy) return;
   imgBusy = true; updateImgInfo();
+  const gen = wipeGen;
   try{
     if (!info) info = await getImageInfo();
     const base = DRIVE + IMAGE_ZIP_ID;
@@ -858,8 +878,11 @@ async function downloadImages(info){
       }catch(e){ fail++; console.warn("이미지 변환 실패:", fname, e); }
     }
     const entries = [...thumbs];
-    checkCancel(); progSet("img", { text: "저장 중…", pct: 100 });
+    checkCancel(); if (gen !== wipeGen) throw cancelErr();
+    progSet("img", { text: "저장 중…", pct: 100 });
     await idbReplaceAll(entries);
+    if (gen !== wipeGen){ await idbClear(); throw cancelErr(); }   // 저장 중 사용 중지됨
+    askPersist();
     imgMeta = { version: info.version, count: entries.length, size: Number(info.size) || zipBlob.size, savedAt: Date.now() };
     lsSet(LS.imgMeta, imgMeta);
     setImgUrls(new Map(entries));
@@ -869,6 +892,7 @@ async function downloadImages(info){
     if (dups.length) dialog({ title: "이름이 겹치는 이미지", msg: "다음 이미지는 이름이 같아(공백·대소문자 무시) 뒤의 것만 사용됩니다:\n- " + dups.join("\n- "), buttons: [["확인", null, "pri"]] });
   }catch(e){
     console.warn(e);
+    if (isNetDown(e)) updNetDown = true;
     if (e && e.cancel){ progSet("img", { state: "cancel" }); imgProgress = ""; imgBusy = false; updateImgInfo(); return; }
     progSet("img", { state: "fail", text: errText(e) });
     toast("이미지 받기 실패: " + errText(e));
@@ -926,7 +950,8 @@ const LS_MANSIZE = "rps_man_size";              // 드라이브 매뉴얼 zip �
 let manIndex = new Map();                       // 정리된 이름 -> 파일 이름
 const manCache = new Map();                     // 모델명 -> 파일 이름 | null
 
-// 비교용 키: 대문자, 영문·숫자만, 숫자 뒤 N 제거 (HL-3DGN → HL3DG)
+// 비교용 키: 대문자, 영문·숫자만, 숫자 바로 뒤 N 제거 (ID123N → ID123)
+// 모델명 끝의 N(베어툴)은 findManual에서 한 번 더 빼고 찾음 (HL-3DGN → HL-3DG.pdf)
 const manKey = t => String(t).toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/(\d)N/g, "$1");
 function buildManIndex(fileNames){
   const idx = new Map();
@@ -973,45 +998,129 @@ function updateManSize(){
 }
 function setManProgress(msg){ manProgress = msg; updateManInfo(); }
 
+// 저장한 이미지·매뉴얼을 폰이 임의로 지우지 않도록 요청 (안드로이드: 공간 부족 시 자동 삭제 방지)
+let persistAsked = false;
+function askPersist(){
+  if (persistAsked) return; persistAsked = true;
+  try{ if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); }catch(e){}
+}
+// 저장하기 전에 남은 공간 확인 (지원하는 폰만). reuse = 새로 받으면 지워질 기존 용량
+async function checkSpace(need, reuse){
+  try{
+    if (!navigator.storage || !navigator.storage.estimate) return;
+    const est = await navigator.storage.estimate();
+    if (!est.quota) return;
+    const free = est.quota - (est.usage || 0) + (reuse || 0);
+    if (free < need * 1.05){
+      const e = new Error(`폰 저장 공간이 부족합니다 (필요 약 ${sizeText(need)} · 여유 약 ${sizeText(Math.max(0, free))})`);
+      e.quota = true; throw e;
+    }
+  }catch(e){ if (e && e.quota) throw e; }
+}
+/* ---------- zip을 통째로 메모리에 올리지 않고 파일 하나씩 꺼내기 ----------
+   (PDF 매뉴얼 254MB처럼 큰 zip에서 폰 메모리 부족으로 앱이 꺼지는 것 방지) */
+const CAN_STREAM_UNZIP = (() => { try{ new DecompressionStream("deflate-raw"); return typeof Blob.prototype.stream === "function"; }catch(e){ return false; } })();
+async function zipList(blob){
+  const tailLen = Math.min(blob.size, 65557);
+  const tail = new DataView(await blob.slice(blob.size - tailLen).arrayBuffer());
+  let p = -1;
+  for (let i = tailLen - 22; i >= 0; i--) if (tail.getUint32(i, true) === 0x06054b50){ p = i; break; }
+  if (p < 0) throw new Error("zip 끝 정보 없음");
+  const cdSize = tail.getUint32(p + 12, true), cdOff = tail.getUint32(p + 16, true);
+  if (cdOff === 0xFFFFFFFF || cdOff + cdSize > blob.size) throw new Error("지원하지 않는 zip 형식");
+  const cd = new DataView(await blob.slice(cdOff, cdOff + cdSize).arrayBuffer());
+  const out = [];
+  let q = 0;
+  while (q + 46 <= cd.byteLength && cd.getUint32(q, true) === 0x02014b50){
+    const flags = cd.getUint16(q + 8, true), method = cd.getUint16(q + 10, true);
+    const csize = cd.getUint32(q + 20, true), usize = cd.getUint32(q + 24, true);
+    const nlen = cd.getUint16(q + 28, true), xlen = cd.getUint16(q + 30, true), clen = cd.getUint16(q + 32, true);
+    const loff = cd.getUint32(q + 42, true);
+    if (csize === 0xFFFFFFFF || loff === 0xFFFFFFFF) throw new Error("지원하지 않는 zip 형식");
+    const nb = new Uint8Array(cd.buffer, q + 46, nlen);
+    const name = (flags & 0x800) ? new TextDecoder().decode(nb) : decodeZipName(nb);
+    out.push({ name, method, csize, usize, loff, enc: !!(flags & 1) });
+    q += 46 + nlen + xlen + clen;
+  }
+  return out;
+}
+async function zipRead(blob, e, type){
+  const lh = new DataView(await blob.slice(e.loff, e.loff + 30).arrayBuffer());
+  if (lh.getUint32(0, true) !== 0x04034b50) throw new Error("zip 파일 손상");
+  const start = e.loff + 30 + lh.getUint16(26, true) + lh.getUint16(28, true);
+  const data = blob.slice(start, start + e.csize);
+  if (e.method === 0) return new Blob([data], { type });                     // 압축 안 됨: 그대로
+  if (e.method === 8){                                                       // 일반 압축(deflate)
+    const out = await new Response(data.stream().pipeThrough(new DecompressionStream("deflate-raw"))).blob();
+    return new Blob([out], { type });
+  }
+  throw new Error("지원하지 않는 압축 방식");
+}
+
 async function downloadManuals(info){
   if (manBusy) return;
   manBusy = true; updateManInfo();
+  const gen = wipeGen;
+  const stop = () => { checkCancel(); if (gen !== wipeGen) throw cancelErr(); };
+  let cleared = false, saved = [], ver = "", zsize = 0;
   try{
     if (!info) info = await getManualInfo();
+    ver = info.version;
     const zipBlob = await fetchWithProgress(`${DRIVE}${MANUAL_ZIP_ID}?alt=media&supportsAllDrives=true&key=${API_KEY}`, (got, total) => {
       setManProgress(total ? `받는 중 ${Math.floor(got / total * 100)}% (${mb(got)} / ${mb(total)})` : `받는 중 ${mb(got)}`);
       progBytes("man", got, total);
     });
-    checkCancel();
-    setManProgress("압축 푸는 중…"); progSet("man", { text: "압축 푸는 중…", pct: 0 });
-    let zip;
-    try{ zip = await JSZip.loadAsync(zipBlob, { decodeFileName: decodeZipName }); }
-    catch(e){ throw new Error("매뉴얼 파일이 압축 파일(ZIP)이 아닙니다"); }
-    const files = Object.values(zip.files).filter(f => {
-      if (f.dir || f.name.includes("__MACOSX")) return false;
-      const fname = f.name.replace(/\\/g, "/").split("/").pop();
-      return !!fname && !fname.startsWith(".") && /\.pdf$/i.test(fname);
-    });
-    if (!files.length) throw new Error("압축 파일 안에 PDF가 없습니다");
-    const pdfs = new Map();
-    let i = 0;
-    for (const f of files){
-      i++;
-      if (i % 3 === 1){ checkCancel(); setManProgress(`매뉴얼 정리 중 ${i}/${files.length}`); progSet("man", { text: `정리 중 ${i}/${files.length}`, pct: i / files.length * 100 }); }
-      const fname = f.name.replace(/\\/g, "/").split("/").pop().normalize("NFC");
-      pdfs.set(fname, new Blob([await f.async("uint8array")], { type: "application/pdf" }));
+    zsize = Number(info.size) || zipBlob.size;
+    stop();
+    setManProgress("압축 확인 중…"); progSet("man", { text: "압축 확인 중…", pct: 0 });
+    // 파일 목록 (가능하면 zip을 통째로 풀지 않고 목록만 읽음)
+    const okName = n => { const f = n.replace(/\\/g, "/").split("/").pop(); return !n.includes("__MACOSX") && !!f && !f.startsWith(".") && /\.pdf$/i.test(f); };
+    const base = n => n.replace(/\\/g, "/").split("/").pop().normalize("NFC");
+    let list = null, zip = null;
+    if (CAN_STREAM_UNZIP){
+      try{ list = (await zipList(zipBlob)).filter(e => !e.enc && okName(e.name)); }catch(e){ console.warn("목록 읽기 실패 → 기본 방식", e); list = null; }
     }
-    const entries = [...pdfs];
-    checkCancel(); progSet("man", { text: "저장 중…", pct: 100 });
-    await idbReplaceAll(entries, "pdf");
-    manMeta = { version: info.version, count: entries.length, size: Number(info.size) || zipBlob.size, savedAt: Date.now(), names: entries.map(e => e[0]) };
+    if (!list){
+      try{ zip = await JSZip.loadAsync(zipBlob, { decodeFileName: decodeZipName }); }
+      catch(e){ throw new Error("매뉴얼 파일이 압축 파일(ZIP)이 아닙니다"); }
+      list = Object.values(zip.files).filter(f => !f.dir && okName(f.name)).map(f => ({ name: f.name, file: f, usize: (f._data && f._data.uncompressedSize) || 0 }));
+    }
+    if (!list.length) throw new Error("압축 파일 안에 PDF가 없습니다");
+    // 공간 확인 → 기존 매뉴얼 먼저 삭제 (예전·새 매뉴얼이 동시에 공간을 차지하지 않게)
+    const need = list.reduce((s, e) => s + (e.usize || 0), 0) || zsize;
+    await checkSpace(need, (manMeta && manMeta.size) || 0);
+    stop();
+    manMeta = null; lsDel(LS.manMeta); rebuildManIndex(); render();
+    await idbClear("pdf"); cleared = true;
+    // 하나씩 꺼내 바로 저장 (메모리에는 PDF 1개만)
+    let i = 0;
+    for (const e of list){
+      i++;
+      stop();
+      setManProgress(`매뉴얼 저장 중 ${i}/${list.length}`);
+      progSet("man", { text: `저장 중 ${i}/${list.length}`, pct: i / list.length * 100 });
+      const blob = e.file ? new Blob([await e.file.async("blob")], { type: "application/pdf" }) : await zipRead(zipBlob, e, "application/pdf");
+      const name = base(e.name);
+      await idbPut("pdf", name, blob);
+      if (!saved.includes(name)) saved.push(name);
+    }
+    stop();
+    manMeta = { version: ver, count: saved.length, size: zsize, savedAt: Date.now(), names: saved };
     lsSet(LS.manMeta, manMeta);
-    rebuildManIndex(); render();
+    rebuildManIndex(); render(); askPersist();
     progSet("man", { state: "done" });
-    if (!progActive()) toast(`매뉴얼 ${entries.length}개 저장 완료`);
+    if (!progActive()) toast(`매뉴얼 ${saved.length}개 저장 완료`);
     loadPdfLib().catch(() => {});   // 보기 프로그램도 미리 받아 둠 (오프라인에서도 열리게)
   }catch(e){
     console.warn(e);
+    if (gen !== wipeGen){ try{ await idbClear("pdf"); }catch(x){} manBusy = false; manProgress = ""; updateManInfo(); return; }   // 사용 중지된 기기: 받은 것도 지움
+    // 기존 매뉴얼을 지운 뒤 멈춘 경우: 저장된 것까지는 사용 (버전은 비워서 다음에 다시 받도록)
+    if (cleared){
+      manMeta = saved.length ? { version: "", count: saved.length, size: zsize, savedAt: Date.now(), names: saved } : null;
+      if (manMeta) lsSet(LS.manMeta, manMeta); else lsDel(LS.manMeta);
+      rebuildManIndex(); render();
+    }
+    if (isNetDown(e)) updNetDown = true;
     if (e && e.cancel){ progSet("man", { state: "cancel" }); manProgress = ""; manBusy = false; updateManInfo(); return; }
     progSet("man", { state: "fail", text: errText(e) });
     toast("매뉴얼 받기 실패: " + errText(e));
@@ -1060,14 +1169,19 @@ let pdfLib = null;
 function loadPdfLib(){
   if (!pdfLib) pdfLib = import("./pdf.min.js").then(m => {
     m.GlobalWorkerOptions.workerSrc = new URL("pdf.worker.min.js", location.href).href;
+    fetch(m.GlobalWorkerOptions.workerSrc).catch(() => {});   // 작업용 파일도 미리 받아 저장 (오프라인에서 처음 열 때 대비)
     return m;
   }).catch(e => { pdfLib = null; throw e; });
   return pdfLib;
 }
 const pdfv = { doc: null, name: "", zoom: 1, pages: [], obs: null, token: 0, url: "" };
+let pdfOpening = false;
 async function openManual(name){
+  if (pdfOpening || !$("pdfv").hidden) return;   // 빠르게 두 번 눌러도 한 번만
+  pdfOpening = true;
   let blob = null;
   try{ blob = await idbGet("pdf", name); }catch(e){ console.warn(e); }
+  finally{ pdfOpening = false; }
   if (!blob){
     const r = await dialog({ title: "매뉴얼 없음", msg: `${name}\n\n이 폰에 매뉴얼 파일이 없습니다.\n서버에서 다시 받을까요?`,
       buttons: [["취소", null], ["다시 받기", "ok", "pri"]] });
@@ -1109,6 +1223,7 @@ function buildPdfPages(){
   const body = $("pdfBody"), doc = pdfv.doc;
   if (pdfv.obs) pdfv.obs.disconnect();
   const w = Math.round((body.clientWidth - 20) * pdfv.zoom);
+  for (const d of pdfv.pages) clearPdfPage(d);   // 이전 배율의 그림은 메모리에서 바로 비움
   body.innerHTML = "";
   pdfv.pages = [];
   for (let n = 1; n <= doc.numPages; n++){
@@ -1120,19 +1235,29 @@ function buildPdfPages(){
   pdfv.obs = new IntersectionObserver(ents => {
     for (const en of ents){
       if (en.isIntersecting) drawPdfPage(en.target);
-      else if (en.target.firstChild){ en.target.firstChild.width = 0; en.target.innerHTML = ""; en.target._drawn = 0; }   // 멀어진 페이지는 지움
+      else clearPdfPage(en.target);   // 멀어진 페이지는 지움 (그리는 중이었어도 취소)
     }
   }, { root: body, rootMargin: "800px 0px" });
   pdfv.pages.forEach(d => pdfv.obs.observe(d));
   updatePdfPageNo();
 }
+function clearPdfPage(div){
+  div._job = (div._job || 0) + 1;   // 그리는 중인 작업은 결과를 버림
+  div._drawn = 0;
+  const cv = div.querySelector("canvas");
+  if (cv){ cv.width = 0; cv.height = 0; }
+  div.innerHTML = "";
+}
 async function drawPdfPage(div){
   const tok = pdfv.token, zoom = pdfv.zoom;
   if (div._drawn === zoom) return;
   div._drawn = zoom;
+  const job = div._job = (div._job || 0) + 1;
+  const stale = () => tok !== pdfv.token || div._job !== job;
+  let page = null;
   try{
-    const page = await pdfv.doc.getPage(Number(div.dataset.n));
-    if (tok !== pdfv.token || div._drawn !== zoom) return;
+    page = await pdfv.doc.getPage(Number(div.dataset.n));
+    if (stale()) return;
     const w = parseFloat(div.style.width);
     const base = page.getViewport({ scale: 1 });
     div.style.height = Math.round(w * base.height / base.width) + "px";   // 페이지마다 크기가 다를 수 있음
@@ -1144,9 +1269,11 @@ async function drawPdfPage(div){
     const cv = document.createElement("canvas");
     cv.width = Math.floor(vp.width); cv.height = Math.floor(vp.height);
     await page.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise;
-    if (tok !== pdfv.token || div._drawn !== zoom){ cv.width = 0; return; }
+    if (stale()){ cv.width = 0; cv.height = 0; return; }
+    const old = div.querySelector("canvas"); if (old){ old.width = 0; old.height = 0; }
     div.innerHTML = ""; div.appendChild(cv);
-  }catch(e){ console.warn("페이지 표시 실패", e); div._drawn = 0; }
+  }catch(e){ console.warn("페이지 표시 실패", e); if (!stale()) div._drawn = 0; }
+  finally{ try{ if (page) page.cleanup(); }catch(e){} }   // pdf.js 내부 임시 메모리 정리
 }
 function updatePdfPageNo(){
   if (!pdfv.doc) return;
@@ -1171,7 +1298,7 @@ $("pdfClose").onclick = () => { if (layers[layers.length - 1] === "pdf") closeLa
 function closePdf(){
   pdfv.token++;
   if (pdfv.obs){ pdfv.obs.disconnect(); pdfv.obs = null; }
-  for (const d of pdfv.pages) if (d.firstChild) d.firstChild.width = 0;
+  for (const d of pdfv.pages) clearPdfPage(d);
   pdfv.pages = [];
   if (pdfv.doc){ try{ pdfv.doc.destroy(); }catch(e){} pdfv.doc = null; }
   if (pdfv.url){ URL.revokeObjectURL(pdfv.url); pdfv.url = ""; }
@@ -1412,7 +1539,11 @@ function errInfo(e){
 }
 function isRetryable(e){ return errInfo(e).retry; }
 // 인터넷·드라이브 오류는 쉬운 문구로, 그 밖의 오류(파일 내용 문제 등)는 원래 문구 그대로
+function isQuotaErr(e){ return !!e && (e.name === "QuotaExceededError" || /quota/i.test(String(e.message || ""))); }
+function isNetDown(e){ return !navigator.onLine || e instanceof TypeError; }
 function errText(e){
+  if (e && e.quota) return e.message;
+  if (isQuotaErr(e)) return "폰 저장 공간이 부족합니다";
   const net = !navigator.onLine || (e && (e.status || e.kind === "timeout")) || e instanceof TypeError;
   return net ? errInfo(e).reason : ((e && e.message) || "알 수 없는 오류");
 }
@@ -1573,6 +1704,7 @@ function showPendingState(){
    [숨기기] → 화면 맨 위 얇은 진행 바 + 상태줄 (누르면 다시 보기)
    ========================================================= */
 let updCtl = null;                 // [취소]용
+let updNetDown = false;            // 받는 중 인터넷이 끊겼는지
 const PROG_LABEL = { data: "가격표", img: "제품 이미지", man: "매뉴얼" };
 const PROG_ICON = { wait: "·", run: "◐", done: "✓", fail: "✕", cancel: "✕", skip: "–" };
 const PROG_STATE = { wait: "대기", done: "완료", fail: "실패", cancel: "취소", skip: "건너뜀" };
@@ -1582,7 +1714,7 @@ function progOpen(keys){
   clearTimeout(prog.timer);
   prog.list = keys.map(k => ({ key: k, label: PROG_LABEL[k], state: "wait", pct: 0, text: "" }));
   prog.hidden = false; prog.finished = false;
-  $("prog").hidden = false;
+  $("prog").hidden = false; pushLayer("prog");   // 뒤로가기 = 숨기기 (받는 중 앱이 닫히지 않게)
   wakeOn(); renderProg();
 }
 function progSet(key, o){
@@ -1643,18 +1775,31 @@ function progButtons(list){
   }
 }
 function progAction(act){
-  if (act === "hide"){ prog.hidden = true; $("prog").hidden = true; renderProg(); }
+  if (act === "hide"){ if (layers[layers.length - 1] === "prog") closeLayers(1); else progHide(); }
   else if (act === "cancel"){
     if (updCtl) updCtl.abort();
     for (const it of prog.list) if (it.state === "wait") it.state = "cancel";
     renderProg();
   }
   else if (act === "close") progClose();
-  else if (act === "retry"){ progClose(); if (pendingUpd) applyUpdate(pendingUpd); }
+  else if (act === "retry"){   // 이번에 실패·취소한 항목만 다시 ([나중에] 한 항목은 제외)
+    const u = {};
+    for (const k of prog.retry || []) if (pendingUpd && pendingUpd[k]) u[k] = pendingUpd[k];
+    progClose();
+    if (Object.keys(u).length) applyUpdate(u);
+  }
 }
-function progShow(){ prog.hidden = false; $("prog").hidden = false; renderProg(); }
+function progHide(){ prog.hidden = true; $("prog").hidden = true; renderProg(); }
+function progShow(){ if (!prog.hidden) return; prog.hidden = false; $("prog").hidden = false; pushLayer("prog"); renderProg(); }
+function progLayerOff(){   // 진행 창의 뒤로가기 기록 정리
+  const i = layers.lastIndexOf("prog");
+  if (i < 0) return;
+  if (i === layers.length - 1 && !dlgEntry) closeLayers(1);
+  else layers.splice(i, 1);   // 위에 대화상자가 떠 있으면 기록만 남김 (뒤로가기 한 번 더)
+}
 function progClose(){
   clearTimeout(prog.timer);
+  progLayerOff();
   $("prog").hidden = true; $("topbar").hidden = true;
   prog.list = []; prog.finished = false; prog.hidden = false;
   if (items.length && !syncErr && !updating){ showMetaStatus(pendingUpd ? "" : "최신"); showPendingState(); }
@@ -1665,6 +1810,7 @@ function progFinish(){
   prog.finished = true;
   const bad = prog.list.filter(x => x.state === "fail");
   const cancelled = prog.list.some(x => x.state === "cancel");
+  prog.retry = prog.list.filter(x => (x.state === "fail" || x.state === "cancel") && pendingUpd && pendingUpd[x.key]).map(x => x.key);
   $("topbar").hidden = true;
   if (!bad.length && !cancelled){
     $("progTitle").textContent = "업데이트 완료";
@@ -1676,7 +1822,7 @@ function progFinish(){
   }
   $("progTitle").textContent = cancelled && !bad.length ? "취소했습니다" : "일부 받지 못했습니다";
   $("progNote").textContent = "받은 항목은 그대로 사용합니다\n나머지는 ☁ 버튼으로 다시 받을 수 있습니다";
-  progButtons(pendingUpd ? [["닫기", "close"], ["다시 받기", "retry", "pri"]] : [["닫기", "close", "pri"]]);
+  progButtons(prog.retry.length ? [["닫기", "close"], ["다시 받기", "retry", "pri"]] : [["닫기", "close", "pri"]]);
   if (prog.hidden) progShow();   // 숨겨 둔 상태에서 실패하면 다시 보여 줌
 }
 // 받는 동안 화면 꺼짐 방지 (지원하는 폰만)
@@ -1721,7 +1867,7 @@ async function applyUpdate(u){
   if (!keys.length) return;
   const prev = pendingUpd || {};
   updating = true; $("btnSync").disabled = true;
-  updCtl = new AbortController();
+  updCtl = new AbortController(); updNetDown = false;
   progOpen(keys);
   try{
     for (const k of keys){
@@ -1742,12 +1888,24 @@ async function applyUpdate(u){
   if (pendingUpd) setDismissed(updKey(pendingUpd));
   else if (items.length) showMetaStatus("최신");
   showPendingState();
+  if (updNetDown){   // 받는 중 인터넷이 끊김 → 바로 오프라인 표시 (다시 연결되거나 상태줄을 누르면 확인)
+    setOffline(true); syncErr = { reason: navigator.onLine ? "연결 실패" : "인터넷 연결 없음", retry: false }; showOfflineStatus();
+  }
 }
 async function downloadData(ver){
   setStatus("새 가격표 받는 중…"); if (!items.length) render();
   try{
-    const blob = await fetchWithProgress(`${DRIVE}${EXCEL_FILE_ID}?alt=media&supportsAllDrives=true&key=${API_KEY}`, (got, total) => progBytes("data", got, total));
-    checkCancel();
+    const gen = wipeGen;
+    const url = `${DRIVE}${EXCEL_FILE_ID}?alt=media&supportsAllDrives=true&key=${API_KEY}`;
+    let blob;
+    try{ blob = await fetchWithProgress(url, (got, total) => progBytes("data", got, total)); }
+    catch(e){   // 일시적인 오류면 1.5초 뒤 한 번 더 (예전과 같음)
+      if (e.cancel || !navigator.onLine || e.kind === "timeout" || !isRetryable(e)) throw e;
+      progSet("data", { text: "다시 시도 중…", pct: 0 });
+      await new Promise(r => setTimeout(r, 1500)); checkCancel();
+      blob = await fetchWithProgress(url, (got, total) => progBytes("data", got, total));
+    }
+    checkCancel(); if (gen !== wipeGen) throw cancelErr();
     progSet("data", { text: "정리 중…", pct: 100 });
     const parsed = parseWorkbook(await blob.arrayBuffer());
     if (!(await confirmShrink(parsed))){
@@ -1761,6 +1919,7 @@ async function downloadData(ver){
     return true;
   }catch(e){
     console.warn(e);
+    if (isNetDown(e)) updNetDown = true;
     if (e && e.cancel){ progSet("data", { state: "cancel" }); if (items.length) showMetaStatus(); else setStatus("데이터 없음", true); return false; }
     progSet("data", { state: "fail", text: errText(e) });
     toast("가격표 받기 실패: " + errText(e));
@@ -1777,6 +1936,7 @@ const LAYER_EL = { sheet: "sheet", cart: "cartSheet", admin: "adminSheet", share
 function hideLayer(name){
   if (name === "viewer") $("viewer").hidden = true;
   else if (name === "pdf") closePdf();
+  else if (name === "prog"){ if (progActive()) progHide(); else $("prog").hidden = true; }
   else $(LAYER_EL[name] || "sheet").classList.remove("show");
   if (!Object.values(LAYER_EL).some(id => $(id).classList.contains("show"))) $("mask").classList.remove("show");
 }
@@ -1833,7 +1993,7 @@ function openSheet(){
   pushLayer("sheet");
 }
 function closeSheet(){   // 설정/견적함/관리자 창 모두 닫기
-  const n = layers.filter(x => x in LAYER_EL).length ? layers.length : 0;
+  const n = layers.length;   // 매뉴얼·이미지 보기 등 열린 창 모두 (뒤로가기 기록도 함께 정리)
   if (n) closeLayers(n);
   else { Object.values(LAYER_EL).forEach(id => $(id).classList.remove("show")); $("mask").classList.remove("show"); }
 }
@@ -2172,12 +2332,16 @@ function setAuth(status, extra){
   lsSet(LS_AUTH, authState);
 }
 // 차단 시: 이 폰에 저장된 가격 관련 데이터 모두 삭제
+let wipeGen = 0;   // 데이터 삭제 횟수: 받는 중에 삭제되면 그 결과는 저장하지 않음
 async function wipeAllData(){
+  wipeGen++;
+  if (updCtl) updCtl.abort();
+  if (prog.list.length){ prog.finished = true; $("prog").hidden = true; $("topbar").hidden = true; prog.list = []; }
   lsDel(LS.data); lsDel(LS.imgMeta); lsDel(LS_CART); lsDel(LS_QUOTES);
   lsDel(SS_SEARCH); lsDel(SS_SCROLL);
   try{ await idbClear(); }catch(e){}
   lsDel(LS.manMeta); try{ await idbClear("pdf"); }catch(e){}
-  closePdf(); manMeta = null; rebuildManIndex();
+  closePdf(); manMeta = null; rebuildManIndex();   // 열린 창의 뒤로가기 기록은 잠금 화면(showLock)이 정리
   setImgUrls(new Map()); imgMeta = null; pendingUpd = null; setDismissed(""); $("syncDot").hidden = true;
   items = []; meta = null; indexItems();
   cart = { entries: [], ship: false, loadedName: null }; renderCart();
@@ -2204,7 +2368,7 @@ function showLock(status, info){
   if (canRequest && authState.name && !$("reqName").value) $("reqName").value = authState.name;
   if (!blocked && authState.requested) startLockPolling(); else stopLockPolling();
   if ($("lock").hidden){
-    closeSheet(); $("viewer").hidden = true; closePdf();
+    closeSheet(); $("viewer").hidden = true;
     $("lock").hidden = false;
   }
 }
@@ -2707,6 +2871,7 @@ async function checkAppUpdate(){
   finally{ updChecking = false; }
 }
 $("btnUpd").onclick = async () => {
+  if (updating){ toast("데이터를 받는 중입니다. 끝난 뒤 다시 눌러 주세요"); return; }   // 새로 고치면 받던 것이 끊김
   const btn = $("btnUpd");
   btn.disabled = true; btn.textContent = "업데이트 중…";
   try{
