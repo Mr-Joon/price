@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.42</title>
+<title>판매가 검색기 v1.0.43</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -497,7 +497,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.42";
+const VERSION = "1.0.43";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
@@ -595,19 +595,75 @@ function makeSearchKey(model, desc){ return (model + desc).toLowerCase().replace
 function normalizeQuery(t){ return (t || "").toLowerCase().replace(/ /g, ""); }
 function tokenize(t){ return String(t).toLowerCase().match(/[가-힣]+|[a-z0-9]+/g) || []; }
 function stripGen(name){ return String(name).replace(/\s*[\(（][^\)）]*[\)）]/g, "").trim(); }
-function preparePool(list){ return list.map(it => [it, stripGen(it.model), new Set(tokenize(it.model))]); }
-function smartMatch(mainName, pool, limit = COMPARE_DISPLAY_LIMIT){
-  const mainBase = stripGen(mainName), mainTokens = tokenize(mainName);
+/* ---------- 비교 제품 고르기: 비교 검색어와 맞는 제품은 모두 후보, 비슷한 순으로 정렬 ----------
+   순서: ① 기본 모델명이 같음(신형/구형) → ② 이름 조각이 겹침 → ③ 그 밖 (각각 점수 순)
+   점수: 겹치는 조각 길이 + 끝 단위 같음 + 숫자 가까움 + 접두어 비슷함 + 설명 단어 같음 */
+// 모델명 → 접두어 / 숫자 / 끝 단위  (HL-11G → HL·11·G, CLL-150G → CLL·150·G, MA20-IW236 → IW·236)
+function modelParts(name){
+  const segs = stripGen(name).toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+  for (let i = segs.length - 1; i >= 0; i--){
+    const m = segs[i].match(/^([A-Z]*)(\d+)([A-Z]*)/);
+    if (!m) continue;
+    let pre = m[1];
+    if (!pre && i > 0 && /^[A-Z]+$/.test(segs[i - 1])) pre = segs[i - 1];
+    let unit = m[3];
+    if (unit.length > 1 && unit.endsWith("N")) unit = unit.slice(0, -1);   // 끝 N(베어툴)은 같은 계열로 봄 (3DGN ≈ 3DG)
+    return { pre, num: Number(m[2]), unit };
+  }
+  return { pre: segs.join(""), num: null, unit: "" };
+}
+// 설명 단어: 2글자 이상, 너무 흔한 단어(전체 제품의 30% 이상에 있는 단어, 예: HPT)는 제외
+let descStop = null, descStopFor = null;
+function descWords(desc){
+  if (descStopFor !== items){
+    const df = new Map();
+    for (const it of items) for (const w of new Set(tokenize(it.desc))) df.set(w, (df.get(w) || 0) + 1);
+    descStop = new Set([...df].filter(([w, n]) => n >= items.length * 0.3).map(([w]) => w));
+    descStopFor = items;
+  }
+  return new Set(tokenize(desc).filter(w => w.length >= 2 && !descStop.has(w)));
+}
+function prepItem(it){
+  const toks = new Set(tokenize(it.model));
+  const words = descWords(it.desc);
+  for (const w of [...words]) if (toks.has(w) || /\d/.test(w)) words.delete(w);   // 설명 속 모델명·숫자는 이미 위에서 계산
+  return { it, base: stripGen(it.model), toks, parts: modelParts(it.model), words };
+}
+function preparePool(list){ return list.map(prepItem); }
+// 접두어 비슷함: 겹치는 글자 비율 (HL·CLL → L 1개 겹침)
+function prefixSim(a, b){
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  const cnt = new Map(); for (const c of a) cnt.set(c, (cnt.get(c) || 0) + 1);
+  let common = 0; for (const c of b){ const n = cnt.get(c) || 0; if (n){ common++; cnt.set(c, n - 1); } }
+  return 2 * common / (a.length + b.length);
+}
+function similarity(m, c){
+  let overlap = 0;
+  for (const t of m.toks) if (c.toks.has(t)) overlap += t.length;           // 겹치는 조각 (예전과 같음)
+  let bonus = 0;
+  const a = m.parts, b = c.parts;
+  if (a.unit && a.unit === b.unit) bonus += 3;                               // 끝 단위 같음 (11G·150G)
+  if (a.num != null && b.num != null){                                       // 숫자 가까움 (0~3)
+    const hi = Math.max(a.num, b.num), lo = Math.min(a.num, b.num);
+    bonus += hi === 0 ? 3 : 3 * lo / hi;
+  }
+  bonus += 2 * prefixSim(a.pre, b.pre);                                      // 접두어 비슷함 (0~2)
+  let same = 0; for (const w of m.words) if (c.words.has(w)) same++;
+  bonus += Math.min(3, same);                                                // 설명 단어 같음 (최대 3)
+  return { overlap, score: overlap + bonus };
+}
+function smartMatch(mainItem, pool, limit = COMPARE_DISPLAY_LIMIT){
+  const m = prepItem(mainItem);
   const scored = [];
-  pool.forEach(([item, compBase, compTokens], idx) => {
-    if (item.model === mainName) return;
-    if (compBase && compBase === mainBase){ scored.push([9999, idx, item]); return; }
-    let s = 0;
-    for (const t of mainTokens) if (compTokens.has(t)) s += t.length;
-    if (s > 0) scored.push([s, idx, item]);
+  pool.forEach((c, idx) => {
+    if (c.it.model === mainItem.model) return;
+    if (c.base && c.base === m.base){ scored.push([2, 0, idx, c.it]); return; }   // 같은 모델 신형/구형: 최상위
+    const s = similarity(m, c);
+    scored.push([s.overlap > 0 ? 1 : 0, s.score, idx, c.it]);                    // 점수 0이어도 후보에 포함
   });
-  scored.sort((a,b) => b[0]-a[0] || a[1]-b[1]);   // 점수 높은 순, 동점이면 원래 순서
-  return scored.slice(0, limit).map(x => x[2]);
+  scored.sort((x, y) => y[0] - x[0] || y[1] - x[1] || x[2] - y[2]);   // 단계 → 점수 → 원래 순서
+  return scored.slice(0, limit).map(x => x[3]);                       // 후보가 3개 이하이면 모두
 }
 function searchAll(query){
   const q = normalizeQuery(query);
@@ -1422,7 +1478,7 @@ function render(){
   const html = [`<div class="${cls}">${header}</div>`];
   for (const m of mainAll.slice(0, DISPLAY_LIMIT)){
     html.push(cardHtml(m));
-    if (pool) for (const c of smartMatch(m.model, pool)) html.push(cardHtml(c, m));
+    if (pool) for (const c of smartMatch(m, pool)) html.push(cardHtml(c, m));
   }
   out.innerHTML = html.join("");
 }
