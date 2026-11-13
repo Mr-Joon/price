@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>판매가 검색기 v1.0.43</title>
+<title>판매가 검색기 v1.0.44</title>
 <script>
   // 화면이 깜빡이지 않도록 테마를 가장 먼저 적용
   try{ const t = localStorage.getItem("rps_theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; }catch(e){}
@@ -497,7 +497,7 @@ main{padding:10px 14px 30px}
    - 데이터: 구글 드라이브 data.xlsx / 이미지 zip (Drive API v3 + API 키)
    - 오프라인: 데이터는 localStorage, 이미지는 IndexedDB에 저장
    ========================================================= */
-const VERSION = "1.0.43";
+const VERSION = "1.0.44";
 
 // 구글 드라이브 접속 정보 (PC 앱 v6.3.21과 같은 파일)
 const EXCEL_FILE_ID = "1KoHNrv5atci3MWEk2C2v3xUnqsLAZhzf";       // data.xlsx
@@ -2067,8 +2067,12 @@ const LS_CART = "rps_cart", LS_QUOTES = "rps_quotes";
 // cart.entries: [{model, qty, type:"reward"|"normal"}] (담은 순서 유지)
 let cart = lsGet(LS_CART) || { entries: [], ship: false, loadedName: null };
 if (!Array.isArray(cart.entries)) cart = { entries: [], ship: false, loadedName: null };
+if (!cart.entries.length) cart.ship = false;   // 예전에 저장된 빈 견적함의 택배비 체크 정리
 
-function saveCart(){ warnStorage(lsSet(LS_CART, cart)); }
+function saveCart(){
+  if (!cart.entries.length) cart.ship = false;   // 견적함이 비면 택배비 포함 해제 (비우기·마지막 삭제·가격표 갱신으로 모두 빠짐 등)
+  warnStorage(lsSet(LS_CART, cart));
+}
 function unitPrice(e){ const it = byModel.get(e.model); if (!it) return 0; return e.type === "reward" ? it.r : it.n; }
 function cartQty(){ return cart.entries.reduce((s, e) => s + e.qty, 0); }
 function cartTotal(){
